@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  EC2 (x2 AZ), ALB, IAM Role con SSM+S3
+  Sistema Gestion Preescolar — app-jardin
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: dev
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t2.micro]
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: "Key pair SSH existente en la cuenta"
+  LatestUbuntuAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+
+Resources:
+  # ── IAM Role EC2 ──────────────────────────────────────────
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "jardin-ec2-role-${Environment}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket]
+                Resource:
+                  - !Sub "arn:aws:s3:::jardin-${Environment}-files-*"
+                  - !Sub "arn:aws:s3:::jardin-${Environment}-files-*/*"
+        - PolicyName: SSMAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters, ssm:GetParametersByPath]
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/jardin/${Environment}/*"
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "jardin-ec2-profile-${Environment}"
+      Roles: [!Ref EC2Role]
+
+  # ── EC2 instancias ────────────────────────────────────────
+  EC2A:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestUbuntuAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SubnetId:
+        Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicA"
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SGEC2"
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-ec2-a-${Environment}"
+        - Key: Project
+          Value: app-jardin
+
+  EC2B:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestUbuntuAMI
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyPairName
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      SubnetId:
+        Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicC"
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SGEC2"
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-ec2-b-${Environment}"
+        - Key: Project
+          Value: app-jardin
+
+  # ── Application Load Balancer ──────────────────────────────
+  ALB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "jardin-alb-${Environment}"
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SGALB"
+      Subnets:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicA"
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicC"
+      Tags:
+        - Key: Project
+          Value: app-jardin
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "jardin-tg-${Environment}"
+      Protocol: HTTP
+      Port: 80
+      VpcId:
+        Fn::ImportValue: !Sub "jardin-${Environment}-VpcId"
+      TargetType: instance
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Targets:
+        - Id: !Ref EC2A
+          Port: 80
+        - Id: !Ref EC2B
+          Port: 80
+
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+Outputs:
+  EC2APublicIP:
+    Value: !GetAtt EC2A.PublicIp
+    Export:
+      Name: !Sub "jardin-${Environment}-EC2AIP"
+  EC2BPublicIP:
+    Value: !GetAtt EC2B.PublicIp
+    Export:
+      Name: !Sub "jardin-${Environment}-EC2BIP"
+  ALBDNSName:
+    Value: !GetAtt ALB.DNSName
+    Export:
+      Name: !Sub "jardin-${Environment}-ALBDNS"
+  TargetGroupArn:
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub "jardin-${Environment}-TGArn"

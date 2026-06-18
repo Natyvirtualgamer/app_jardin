@@ -1,0 +1,130 @@
+@startuml 02_pipeline_cicd_devsecops
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam ArrowColor #2C3E50
+skinparam ArrowThickness 1.5
+skinparam shadowing false
+
+skinparam activity {
+  BackgroundColor #F0F3F6
+  BorderColor #2C3E50
+  BorderThickness 1.5
+  FontColor #2C3E50
+  RoundCorner 6
+}
+
+skinparam swimlane {
+  BorderColor #566573
+  BorderThickness 1.5
+  TitleFontSize 11
+  TitleFontStyle bold
+  TitleFontColor #1A5276
+  BackgroundColor #FDFEFE
+}
+
+title <b><size:14>Pipeline CI/CD — DevSecOps</size></b>\n<size:10>GitHub Actions · SonarCloud · Trivy · GHCR · AWS · Ansible · Azure</size>
+
+|<b>Desarrollador</b>|
+start
+:git push / Pull Request\nhacia rama main o develop;
+
+|<b>Job 1 — Tests + SonarCloud</b>|
+:Checkout del repositorio\n(fetch-depth: 0 para historial completo);
+:Setup Python 3.11 + instalar dependencias;
+:pytest con coverage\n(umbral mínimo 60%\ncoverage.xml generado);
+
+:SonarCloud Scan\n(SonarSource/sonarcloud-github-action)\nEnvío a sonarcloud.io — sin servidor propio;
+
+note right
+  <b>SonarCloud analiza:</b>
+  · Bugs en código Python / JS
+  · Code Smells
+  · Vulnerabilidades SAST
+  · Security Hotspots
+  · Cobertura de tests
+  · Duplicación de código
+  <i>Gratuito con cuenta GitHub.
+  No requiere servidor propio.</i>
+end note
+
+if (Quality Gate?) then (PASSED)
+  :Continuar pipeline;
+else (FAILED)
+  :Pipeline detenido\nNotificación al equipo;
+  stop
+endif
+
+|<b>Job 2 — Docker Build + Trivy + GHCR</b>|
+:Login GHCR con GITHUB_TOKEN;
+fork
+  :docker build frontend:SHA\n(multistage node:18-alpine\n→ nginx:1.25-alpine);
+fork again
+  :docker build backend:SHA\n(python:3.11-slim\nusuario no-root);
+end fork
+
+fork
+  :Trivy — imagen frontend\nSARIF → GitHub Security\nexit-code 1 si CRITICAL/HIGH;
+fork again
+  :Trivy — imagen backend\nSARIF → GitHub Security\nexit-code 1 si CRITICAL/HIGH;
+fork again
+  :Trivy — filesystem scan\ndependencias + IaC\nexit-code 0 (warning only);
+end fork
+
+note right
+  <b>Trivy escanea:</b>
+  · CVEs en imágenes Docker
+  · Vulnerabilidades en deps runtime
+  · Secrets expuestos en código
+  · Configuraciones IaC
+  <i>Complemento de SonarCloud:
+  SonarCloud = código fuente (SAST)
+  Trivy = artefacto + runtime (SCA)</i>
+end note
+
+if (Trivy sin CRITICAL/HIGH?) then (SÍ)
+  :Push imágenes a GHCR\nfrontend:SHA + latest\nbackend:SHA + latest;
+else (NO)
+  :Pipeline detenido\nCVEs críticos notificados;
+  stop
+endif
+
+|<b>Job 3 — Deploy AWS EC2</b>|
+:Configurar credenciales AWS\n(GitHub Secrets);
+:SSH a EC2-A (AZ-A)\ndocker pull desde GHCR\ndocker compose up -d\nHealth check /health → 200;
+:SSH a EC2-B (AZ-B)\ndocker pull desde GHCR\ndocker compose up -d\nHealth check /health → 200;
+
+|<b>Job 4 — Ansible Verify</b>|
+:Instalar Ansible en runner;
+:Generar inventory dinámico\ndesde GitHub Secrets\n(EC2_A_HOST, EC2_B_HOST);
+:Ansible — verificar contenedores\ndocker ps en ambos nodos;
+:Ansible — health check HTTP\nuri module → /health;
+:Limpiar SSH key del runner;
+
+note right
+  <b>Ansible en el pipeline:</b>
+  Rol verify verifica el estado
+  post-deploy en ambos nodos EC2.
+  Garantiza que el deploy fue
+  exitoso antes de sync Azure.
+end note
+
+|<b>Job 5 — Sync Azure Blob</b>|
+:Login Azure\n(AZURE_CREDENTIALS secret);
+:az storage blob sync\nS3 → Azure Blob Storage\n(réplica archivos críticos);
+:Notificación resultado\nGitHub Checks UI;
+
+stop
+
+legend right
+  |= Herramienta    |= Función               |= Capa           |
+  | SonarCloud      | SAST código fuente      | Código          |
+  | Trivy           | CVEs imágenes + deps    | Contenedor      |
+  | GHCR            | Registro de imágenes    | Artefactos      |
+  | GitHub Actions  | Orquestación CI/CD      | Pipeline        |
+  | AWS EC2         | Deploy productivo       | Infraestructura |
+  | Ansible verify  | Verificación post-deploy| Configuración   |
+  | Azure Blob      | Réplica de archivos     | Contingencia    |
+endlegend
+
+@enduml

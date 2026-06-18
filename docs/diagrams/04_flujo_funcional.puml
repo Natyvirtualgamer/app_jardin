@@ -1,0 +1,87 @@
+@startuml 04_flujo_funcional
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1.5
+
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #90A4AE
+  BorderThickness 1.5
+  RoundCorner 8
+}
+
+title <b>Flujo Funcional del Sistema\nGestión Integral de Jardín Infantil / Sala Cuna</b>
+
+|#E3F2FD| <color:#1565C0><b>📋 Matrícula</b></color> |
+start
+:📝 Recepción recibe solicitud\nde matrícula;
+:🔎 Verificar cupos\ndisponibles en curso;
+if (¿Hay cupos?) then (SÍ)
+  :✅ Registrar **Alumno**\n(datos personales, foto,\nalergias, medicamentos);
+else (NO)
+  :📋 Registrar en lista de espera;
+  stop
+endif
+
+|#FCE4EC| <color:#880E4F><b>👨‍👩‍👧 Apoderados</b></color> |
+:➕ Registrar **Apoderado(s)**\n(mínimo 1, máximo N);
+:🔗 Vincular Alumno ↔ Apoderado\n(tabla alumno_apoderado);
+:🚶 Registrar **Personas\nAutorizadas de Retiro**;
+
+|#FFF9C4| <color:#F57F17><b>📚 Asignación a Curso</b></color> |
+:📌 Asignar alumno al **Curso/Nivel**\ncorrespondiente a su edad;
+:👩‍🏫 Verificar educadora\nasignada al curso;
+:📬 Enviar **comunicado de bienvenida**\nal apoderado principal;
+
+|#E8F5E9| <color:#2E7D32><b>📅 Asistencia Diaria</b></color> |
+:☀️ Inicio de jornada\n(cada día hábil);
+:✅ Educadora registra asistencia\npor alumno;
+fork
+  :✔️ Presente\n(hora llegada);
+fork again
+  :⚠️ Atraso\n(hora llegada tarde);
+fork again
+  :❌ Ausente\n(observación);
+fork again
+  :🔚 Retiro anticipado\n(hora salida + autorizado por);
+end fork
+:📊 Dashboard Admin\nactualiza asistencia\nen tiempo real;
+
+|#FFF3E0| <color:#E65100><b>💰 Pagos y Mensualidades</b></color> |
+:📆 Sistema genera **mensualidad mensual**\nautomáticamente para alumnos activos;
+:💳 Apoderado realiza pago\n(efectivo / débito / crédito / transferencia);
+:🧾 Finanzas registra **Pago**\ncon método y referencia;
+if (¿Pago completo?) then (SÍ)
+  :✅ Mensualidad = PAGADO;
+else (Parcial)
+  :⚠️ Mensualidad = PARCIAL\nRegistrar saldo pendiente;
+endif
+:📧 Notificación de pago\nal apoderado;
+
+|#E8EAF6| <color:#283593><b>💸 Gastos Institucionales</b></color> |
+:📋 Admin/Finanzas registra **Gasto**\n(descripción, categoría, proveedor);
+:📎 Adjuntar comprobante\n(PDF/imagen → S3);
+:📊 Sistema actualiza\nflujo financiero mensual;
+
+|#F3E5F5| <color:#6A1B9A><b>📢 Comunicaciones</b></color> |
+:✏️ Admin/Educadora crea **Comunicado**\n(título, cuerpo, tipo, curso);
+:📬 Notificación push a\napoderados del curso;
+:📰 Apoderado ve comunicado\nen **Portal de Apoderado**;
+
+|#FFFDE7| <color:#F9A825><b>🏠 Portal Apoderado</b></color> |
+:🔑 Apoderado hace login\n(email + contraseña);
+:🏠 Ve información de su(s) hijo(s)\n(asistencia, pagos, comunicados);
+:📅 Revisa **Calendario Escolar**\ny **Minutas** de alimentación;
+:📷 Accede a fotos y documentos\n(visibilidad controlada por admin);
+:🔔 Recibe **Alertas de Pago**\npendiente si corresponde;
+
+|#E0F7FA| <color:#00695C><b>📊 Reportes Administrativos</b></color> |
+:📈 Dashboard: asistencia diaria,\npagos pendientes, cupos;
+:📋 Reporte mensual de pagos\npor curso / institución;
+:📊 Reporte de gastos\nvs ingresos (flujo financiero);
+:📁 Exportar reportes a PDF\n(archivado en S3);
+stop
+
+@enduml

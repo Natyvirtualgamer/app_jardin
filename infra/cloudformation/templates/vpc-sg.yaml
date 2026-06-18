@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  VPC, Subnets, Internet Gateway, Security Groups
+  Sistema Gestion Preescolar — app-jardin
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: dev
+  VpcCidr:
+    Type: String
+    Default: "10.0.0.0/16"
+  AdminIP:
+    Type: String
+    Description: "Tu IP publica con mascara /32 para acceso SSH (obligatorio, sin default por seguridad)"
+
+Resources:
+  # ── VPC ────────────────────────────────────────────────────
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-vpc-${Environment}"
+        - Key: Project
+          Value: app-jardin
+
+  IGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-igw-${Environment}"
+
+  IGWAttach:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref IGW
+
+  # ── Subnets ────────────────────────────────────────────────
+  SubnetPublicA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.1.0/24"
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{Key: Name, Value: !Sub "jardin-public-a-${Environment}"}]
+
+  SubnetPublicC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.2.0/24"
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags: [{Key: Name, Value: !Sub "jardin-public-c-${Environment}"}]
+
+  SubnetPrivateA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.3.0/24"
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags: [{Key: Name, Value: !Sub "jardin-private-a-${Environment}"}]
+
+  SubnetPrivateC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.4.0/24"
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags: [{Key: Name, Value: !Sub "jardin-private-c-${Environment}"}]
+
+  SubnetDBA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.5.0/24"
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags: [{Key: Name, Value: !Sub "jardin-db-a-${Environment}"}]
+
+  SubnetDBC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: "10.0.6.0/24"
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags: [{Key: Name, Value: !Sub "jardin-db-c-${Environment}"}]
+
+  # ── Route Table pública ────────────────────────────────────
+  RouteTablePublic:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags: [{Key: Name, Value: !Sub "jardin-rt-public-${Environment}"}]
+
+  RoutePublicDefault:
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttach
+    Properties:
+      RouteTableId: !Ref RouteTablePublic
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref IGW
+
+  RTAssocPublicA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublicA
+      RouteTableId: !Ref RouteTablePublic
+
+  RTAssocPublicC:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetPublicC
+      RouteTableId: !Ref RouteTablePublic
+
+  # ── Security Groups ───────────────────────────────────────
+  # ALB: acepta HTTPS/HTTP desde internet
+  SGALB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "sg-alb-${Environment}"
+      GroupDescription: "ALB - permite 443 y 80 desde internet"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: "0.0.0.0/0"
+      Tags: [{Key: Name, Value: !Sub "sg-alb-${Environment}"}]
+
+  # EC2: acepta 80 desde ALB y 22 desde IP admin
+  SGEC2:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "sg-ec2-${Environment}"
+      GroupDescription: "EC2 - 80 desde ALB, 22 desde IP admin"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !Ref SGALB
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AdminIP
+      Tags: [{Key: Name, Value: !Sub "sg-ec2-${Environment}"}]
+
+  # RDS: acepta 5432 solo desde EC2
+  SGRDS:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "sg-rds-${Environment}"
+      GroupDescription: "RDS - 5432 solo desde sg-ec2"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref SGEC2
+      Tags: [{Key: Name, Value: !Sub "sg-rds-${Environment}"}]
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub "jardin-${Environment}-VpcId"
+  SubnetPublicA:
+    Value: !Ref SubnetPublicA
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetPublicA"
+  SubnetPublicC:
+    Value: !Ref SubnetPublicC
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetPublicC"
+  SubnetPrivateA:
+    Value: !Ref SubnetPrivateA
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetPrivateA"
+  SubnetPrivateC:
+    Value: !Ref SubnetPrivateC
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetPrivateC"
+  SubnetDBA:
+    Value: !Ref SubnetDBA
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetDBA"
+  SubnetDBC:
+    Value: !Ref SubnetDBC
+    Export:
+      Name: !Sub "jardin-${Environment}-SubnetDBC"
+  SGALB:
+    Value: !Ref SGALB
+    Export:
+      Name: !Sub "jardin-${Environment}-SGALB"
+  SGEC2:
+    Value: !Ref SGEC2
+    Export:
+      Name: !Sub "jardin-${Environment}-SGEC2"
+  SGRDS:
+    Value: !Ref SGRDS
+    Export:
+      Name: !Sub "jardin-${Environment}-SGRDS"

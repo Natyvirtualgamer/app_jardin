@@ -1,0 +1,136 @@
+@startuml 07_iac_cloudformation_ansible
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam ArrowColor #2C3E50
+skinparam ArrowThickness 1.5
+skinparam shadowing false
+skinparam linetype polyline
+
+skinparam component {
+  BackgroundColor #F0F3F6
+  BorderColor #1A5276
+  BorderThickness 1.5
+  FontColor #1A5276
+  FontSize 10
+  RoundCorner 6
+}
+
+skinparam package {
+  BackgroundColor #FAFBFC
+  BorderColor #566573
+  BorderThickness 1.5
+  FontColor #1A5276
+  FontStyle bold
+}
+
+skinparam rectangle {
+  BackgroundColor #F0F3F6
+  BorderColor #2C3E50
+  BorderThickness 1.5
+  RoundCorner 6
+  FontColor #2C3E50
+}
+
+title <b><size:14>Infraestructura como Código — AWS CloudFormation + Ansible</size></b>\n<size:10>Provisioning AWS · Respaldo manual Azure Blob · Gestión de Configuración · Secrets via SSM</size>
+
+package "AWS CLOUDFORMATION  (infra/cloudformation/templates/)" as CFN {
+
+  component "vpc-sg.yaml" as TPL_VPC {
+    [AWS::EC2::VPC  10.0.0.0/16\nSubnets: 2 publicas + 2 privadas EC2 + 2 BD (2 AZ)\nInternetGateway + RouteTable publica\nSG-alb: 80/443 desde 0.0.0.0/0\nSG-ec2: 80 desde sg-alb, 22 desde AdminIP\nSG-rds: 5432 desde sg-ec2] as VPCR
+  }
+
+  component "ec2-alb.yaml" as TPL_EC2 {
+    [AWS::EC2::Instance EC2-A / EC2-B\nUbuntu 22.04 (AMI via SSM Parameter)\nAWS::ElasticLoadBalancingV2::LoadBalancer\nTargetGroup  HealthCheck /health\nAWS::IAM::Role  S3 GetObject/PutObject/ListBucket\n  + SSM GetParameter* + KMS Decrypt (condicionado)] as EC2R
+  }
+
+  component "rds-s3.yaml" as TPL_RDS {
+    [AWS::RDS::DBInstance  postgres 15.13\nPubliclyAccessible=false\nStorageEncrypted=true\nBackupRetentionPeriod=7 (PITR)\nDeletionProtection (param, true en prod)\nAWS::S3::Bucket  Versionado + AES256 + acceso publico bloqueado] as RDSR
+  }
+
+  component "SSM Parameter Store\n(scripts/create_ssm_params.sh)" as SSM {
+    [/jardin/<env>/DATABASE_URL (SecureString)\n/jardin/<env>/SECRET_KEY (SecureString)\n/jardin/<env>/S3_BUCKET_NAME (String)\n/jardin/<env>/AWS_REGION (String)\n/jardin/<env>/ACCESS_TOKEN_EXPIRE_MINUTES (String)\nCifrado con KMS — sin credenciales en codigo] as SSMS
+  }
+
+  component "Outputs (Exports CloudFormation)" as OUTS {
+    [VpcId, SGALB/SGEC2/SGRDS\nEC2APublicIP / EC2BPublicIP\nALBDNSName\nRDSEndpoint, S3BucketName] as OUT_LIST
+  }
+}
+
+package "Ambientes  (environments/{dev,prod}/deploy.sh)" as ENVS {
+  component "dev/deploy.sh" as DEV {
+    [InstanceType=t3.micro\nMultiAZ=false\nDeletionProtectionEnabled=false\nAdminIP auto-detectada (ifconfig.me)] as DEVP
+  }
+  component "prod/deploy.sh" as PROD {
+    [InstanceType=t3.small\nMultiAZ=true\nDeletionProtectionEnabled=true\ndestroy.sh desactiva proteccion antes de borrar] as PRODP
+  }
+}
+
+package "RESPALDO SECUNDARIO  (Azure — manual, no IaC)" as AZ {
+  component "Azure CLI\n(docs/guia_instalacion.md Paso 24)" as AZ_BLOB {
+    [Resource Group\nStorage Account  Standard_GRS\nStorage Container privado: backups-jardin\nSync S3 -> Azure Blob via Job sync-azure del pipeline] as BLOBS
+  }
+}
+
+package "ANSIBLE  (Gestion de Configuracion — grupo app_servers)" as ANS {
+
+  component "inventory.ini\nHosts EC2 (IPs desde Outputs CloudFormation)" as INV
+
+  package "Playbook site.yml — Provisioning inicial" as PLAY_SITE {
+    component "Rol common\n(roles/common/tasks/)" as ROLE {
+      component "01-02 Actualizar SO\n+ paquetes base" as T1
+      component "03-04 Hardening\nSSH sin root + fail2ban\n(SIN UFW — lo reemplazan los Security Groups)" as T2
+      component "05-09 Docker CE\n+ Compose plugin + AWS CLI v2" as T3
+      component "14-17 Directorio app\n+ docker-compose.prod.yml -> docker-compose.yml\n+ nginx/nginx.conf" as T4
+      component "18-22 SSM Secrets\ninyectar .env (600)\n+ verificar permisos" as T6
+    }
+  }
+
+  package "Playbook verify.yml — Post-deploy (desde pipeline)" as PLAY_VER {
+    component "Rol verify\n(roles/verify/tasks/)" as ROLE_V {
+      component "Verificar Docker activo\nsystemd status" as V1
+      component "Listar contenedores\ndocker ps ambos nodos" as V2
+      component "Health check HTTP\nuri -> /health -> 200" as V3
+      component "Monitoreo disco\nalerta si mayor 80%" as V4
+    }
+  }
+}
+
+TPL_VPC --> TPL_EC2
+TPL_VPC --> TPL_RDS
+TPL_EC2 --> OUTS
+TPL_RDS --> OUTS
+ENVS --> TPL_EC2
+ENVS --> TPL_RDS
+RDSR --> SSM : RDSEndpoint + S3BucketName\nse usan para crear los parametros
+
+OUTS --> INV : IPs EC2 -> inventory
+INV --> PLAY_SITE
+INV --> PLAY_VER
+T1 --> T2 : secuencial
+T2 --> T3
+T3 --> T4
+T4 --> T6
+
+V1 --> V2
+V2 --> V3
+V3 --> V4
+
+SSM --> T6 : EC2 lee secrets\nvia IAM role (sin credenciales hardcoded)
+OUTS --> AZ_BLOB : S3BucketName (origen del sync)
+
+note bottom of CFN
+  <b>Comandos CloudFormation (via deploy.sh):</b>
+  aws cloudformation deploy --template-file vpc-sg.yaml --stack-name jardin-<env>-vpc-sg
+  aws cloudformation deploy --template-file ec2-alb.yaml --stack-name jardin-<env>-ec2-alb
+  aws cloudformation deploy --template-file rds-s3.yaml  --stack-name jardin-<env>-rds-s3
+end note
+
+note bottom of ANS
+  <b>Comandos Ansible:</b>
+  ansible-playbook -i inventory.ini playbooks/site.yml
+  ansible-playbook -i inventory.ini playbooks/verify.yml
+  (verify.yml tambien se invoca desde el pipeline Job 4)
+end note
+
+@enduml

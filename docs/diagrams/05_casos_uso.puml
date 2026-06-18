@@ -1,0 +1,164 @@
+@startuml 05_casos_uso
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam ArrowColor #333333
+
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+  BorderThickness 1.5
+  FontSize 10
+  RoundCorner 12
+}
+
+skinparam actor {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+  FontSize 10
+}
+
+title <b>Diagrama de Casos de Uso\nSistema Gestión Preescolar — Roles y Funcionalidades</b>
+
+' ====== ACTORES ======
+actor "🔑 Administrador" as ADMIN #FFE0B2
+actor "📋 Dirección" as DIR #E8F5E9
+actor "👩‍🏫 Educadora" as EDUC #F3E5F5
+actor "💰 Finanzas" as FIN #FFF9C4
+actor "🏢 Recepción" as RECEP #E3F2FD
+actor "👨‍👩‍👧 Apoderado" as APO #FCE4EC
+
+' ====== CASOS DE USO ======
+rectangle "Sistema Gestión Preescolar" as SYS #FFFFFF {
+
+  package "👤 Gestión de Alumnos" as PKG_ALU #E8F5E9 {
+    usecase "Registrar alumno" as UC1
+    usecase "Editar datos alumno" as UC2
+    usecase "Ver historial alumno" as UC3
+    usecase "Gestionar salud y\nrestricciones" as UC4
+    usecase "Asignar a curso" as UC5
+  }
+
+  package "👨‍👩‍👧 Gestión de Apoderados" as PKG_APO #FCE4EC {
+    usecase "Registrar apoderado" as UC6
+    usecase "Asociar apoderado\na alumno" as UC7
+    usecase "Registrar persona\nautorizada retiro" as UC8
+  }
+
+  package "📚 Gestión de Cursos" as PKG_CUR #FFF9C4 {
+    usecase "Crear/Editar curso" as UC9
+    usecase "Asignar educadora\na curso" as UC10
+    usecase "Controlar cupos" as UC11
+  }
+
+  package "📅 Asistencia" as PKG_ASIST #E3F2FD {
+    usecase "Registrar asistencia\ndiaria" as UC12
+    usecase "Ver reporte\nasistencia" as UC13
+  }
+
+  package "💰 Pagos y Mensualidades" as PKG_PAG #FFF3E0 {
+    usecase "Registrar pago" as UC14
+    usecase "Gestionar becas\ny descuentos" as UC15
+    usecase "Ver estado\nde cuenta" as UC16
+    usecase "Generar reporte\nde pagos" as UC17
+  }
+
+  package "💸 Gastos" as PKG_GAS #E8EAF6 {
+    usecase "Registrar gasto" as UC18
+    usecase "Adjuntar comprobante" as UC19
+    usecase "Ver flujo financiero" as UC20
+  }
+
+  package "📢 Comunicaciones" as PKG_COM #F3E5F5 {
+    usecase "Publicar comunicado" as UC21
+    usecase "Enviar notificación" as UC22
+    usecase "Publicar minuta" as UC23
+    usecase "Publicar actividad" as UC24
+  }
+
+  package "🏠 Portal Apoderado" as PKG_PORTAL #FFCCBC {
+    usecase "Ver info hijo/s" as UC25
+    usecase "Ver asistencia" as UC26
+    usecase "Ver pagos pendientes" as UC27
+    usecase "Ver comunicados" as UC28
+    usecase "Ver calendario y\nminutas" as UC29
+  }
+
+  package "📊 Reportes y Dashboard" as PKG_REP #E0F7FA {
+    usecase "Ver dashboard\nadministrativo" as UC30
+    usecase "Generar reportes\ngenerales" as UC31
+  }
+
+  package "🔐 Usuarios y Roles" as PKG_USR #ECEFF1 {
+    usecase "Administrar usuarios" as UC32
+    usecase "Asignar roles\ny permisos" as UC33
+    usecase "Login / Logout" as UC34
+  }
+
+}
+
+' ====== ASIGNACIONES ADMIN ======
+ADMIN --> UC1
+ADMIN --> UC2
+ADMIN --> UC3
+ADMIN --> UC4
+ADMIN --> UC5
+ADMIN --> UC6
+ADMIN --> UC7
+ADMIN --> UC8
+ADMIN --> UC9
+ADMIN --> UC10
+ADMIN --> UC11
+ADMIN --> UC30
+ADMIN --> UC31
+ADMIN --> UC32
+ADMIN --> UC33
+ADMIN --> UC34
+
+' ====== DIRECCIÓN ======
+DIR --> UC3
+DIR --> UC13
+DIR --> UC17
+DIR --> UC20
+DIR --> UC30
+DIR --> UC31
+DIR --> UC34
+
+' ====== EDUCADORA ======
+EDUC --> UC12
+EDUC --> UC13
+EDUC --> UC21
+EDUC --> UC22
+EDUC --> UC23
+EDUC --> UC24
+EDUC --> UC3
+EDUC --> UC4
+EDUC --> UC34
+
+' ====== FINANZAS ======
+FIN --> UC14
+FIN --> UC15
+FIN --> UC16
+FIN --> UC17
+FIN --> UC18
+FIN --> UC19
+FIN --> UC20
+FIN --> UC34
+
+' ====== RECEPCION ======
+RECEP --> UC1
+RECEP --> UC6
+RECEP --> UC7
+RECEP --> UC8
+RECEP --> UC12
+RECEP --> UC34
+
+' ====== APODERADO ======
+APO --> UC25
+APO --> UC26
+APO --> UC27
+APO --> UC28
+APO --> UC29
+APO --> UC34
+
+@enduml

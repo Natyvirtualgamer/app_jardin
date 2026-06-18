@@ -1,0 +1,123 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  RDS PostgreSQL (PITR habilitado, sin IP publica) + S3
+  Sistema Gestion Preescolar — app-jardin
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, prod]
+    Default: dev
+  DBName:
+    Type: String
+    Default: jardin_db
+  DBUsername:
+    Type: String
+    Default: jardin_user
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  BackupRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 1
+    MaxValue: 35
+    Description: "Dias de retencion para PITR (1-35)"
+  MultiAZ:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+  DeletionProtectionEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: "Recomendado 'true' en prod para evitar borrado accidental de la RDS"
+
+Resources:
+  # ── RDS Subnet Group ──────────────────────────────────────
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: "Subnets privadas para RDS"
+      SubnetIds:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SubnetDBA"
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SubnetDBC"
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-db-subnet-${Environment}"
+
+  # ── RDS PostgreSQL ────────────────────────────────────────
+  # PITR: BackupRetentionPeriod > 0 activa PITR nativo de RDS.
+  # Recuperacion: AWS Console → RDS → Restore to point in time.
+  # NO se usa pg_dump; el PITR cubre recuperacion a cualquier
+  # segundo dentro de la ventana de retencion.
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub "jardin-rds-${Environment}"
+      DBName: !Ref DBName
+      Engine: postgres
+      # NOTA: 15.6 (version original de este template) ya esta deprecada
+      # en RDS y CloudFormation rechaza el deploy. Verificar versiones
+      # vigentes antes de desplegar:
+      #   aws rds describe-db-engine-versions --engine postgres \
+      #     --query "DBEngineVersions[?starts_with(EngineVersion,'15.')].EngineVersion"
+      EngineVersion: "15.13"
+      DBInstanceClass: !Ref DBInstanceClass
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - Fn::ImportValue: !Sub "jardin-${Environment}-SGRDS"
+      PubliclyAccessible: false
+      MultiAZ: !Ref MultiAZ
+      StorageType: gp2
+      AllocatedStorage: "20"
+      StorageEncrypted: true
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      PreferredBackupWindow: "03:00-04:00"
+      PreferredMaintenanceWindow: "sun:04:30-sun:05:30"
+      DeletionProtection: !Ref DeletionProtectionEnabled
+      Tags:
+        - Key: Name
+          Value: !Sub "jardin-rds-${Environment}"
+        - Key: Project
+          Value: app-jardin
+        - Key: BackupStrategy
+          Value: PITR-nativo-RDS
+
+  # ── S3 Bucket ─────────────────────────────────────────────
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "jardin-${Environment}-files-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: app-jardin
+
+Outputs:
+  RDSEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub "jardin-${Environment}-RDSEndpoint"
+  S3BucketName:
+    Value: !Ref S3Bucket
+    Export:
+      Name: !Sub "jardin-${Environment}-S3Bucket"

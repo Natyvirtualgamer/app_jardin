@@ -1,0 +1,42 @@
+---
+- name: Verificar Docker activo
+  systemd:
+    name: docker
+    state: started
+
+- name: Verificar version de Docker Compose plugin
+  command: docker compose version
+  register: compose_version
+  changed_when: false
+
+- name: Mostrar version de Docker Compose
+  debug:
+    msg: "{{ compose_version.stdout }}"
+
+- name: Listar contenedores activos
+  shell: docker ps --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}"
+  register: containers
+  changed_when: false
+
+- name: Mostrar contenedores
+  debug:
+    msg: "{{ containers.stdout_lines }}"
+
+- name: Health check backend
+  uri:
+    url: "http://localhost/health"
+    method: GET
+    status_code: 200
+    timeout: 10
+  retries: 3
+  delay: 5
+
+- name: Verificar disco (alerta mayor 80%)
+  shell: df -h / | awk 'NR==2{print $5}' | tr -d '%'
+  register: disk_uso
+  changed_when: false
+
+- name: Advertir si disco supera 80%
+  debug:
+    msg: "ADVERTENCIA disco al {{ disk_uso.stdout }}%"
+  when: disk_uso.stdout | int > 80

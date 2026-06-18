@@ -1,0 +1,332 @@
+@startuml 03_modelo_datos_er
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 9
+skinparam linetype ortho
+
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+  BorderThickness 1.5
+  FontSize 9
+}
+
+title <b>Modelo Entidad-Relación — Sistema Gestión Preescolar\n<size:9>Normalizado hasta 3FN | PostgreSQL 15</size></b>
+
+' ======= INSTITUCIÓN Y USUARIOS =======
+entity "**institucion**" as INST #E3F2FD {
+  * id_institucion : SERIAL <<PK>>
+  --
+  nombre : VARCHAR(150) NOT NULL
+  rut : VARCHAR(12) UNIQUE NOT NULL
+  direccion : TEXT
+  telefono : VARCHAR(20)
+  email : VARCHAR(100)
+  logo_url : VARCHAR(300)
+  activo : BOOLEAN DEFAULT true
+  created_at : TIMESTAMP
+}
+
+entity "**rol**" as ROL #E8F5E9 {
+  * id_rol : SERIAL <<PK>>
+  --
+  nombre : VARCHAR(50) UNIQUE NOT NULL
+  descripcion : TEXT
+}
+
+entity "**permiso**" as PERMISO #E8F5E9 {
+  * id_permiso : SERIAL <<PK>>
+  --
+  codigo : VARCHAR(80) UNIQUE NOT NULL
+  descripcion : TEXT
+}
+
+entity "**rol_permiso**" as ROL_PERM #F9FBE7 {
+  * id_rol : INT <<FK>>
+  * id_permiso : INT <<FK>>
+}
+
+entity "**usuario**" as USR #FFF3E0 {
+  * id_usuario : SERIAL <<PK>>
+  --
+  id_institucion : INT <<FK>>
+  id_rol : INT <<FK>>
+  nombre : VARCHAR(100) NOT NULL
+  apellido : VARCHAR(100) NOT NULL
+  rut : VARCHAR(12) UNIQUE NOT NULL
+  email : VARCHAR(100) UNIQUE NOT NULL
+  hashed_password : VARCHAR(255) NOT NULL
+  activo : BOOLEAN DEFAULT true
+  created_at : TIMESTAMP
+}
+
+' ======= EDUCADORA =======
+entity "**educadora**" as EDUC #F3E5F5 {
+  * id_educadora : SERIAL <<PK>>
+  --
+  id_usuario : INT <<FK>> UNIQUE
+  especialidad : VARCHAR(100)
+  titulo : VARCHAR(150)
+}
+
+' ======= CURSOS =======
+entity "**curso**" as CURSO #FFF9C4 {
+  * id_curso : SERIAL <<PK>>
+  --
+  id_institucion : INT <<FK>>
+  id_educadora : INT <<FK>>
+  nombre : VARCHAR(100) NOT NULL
+  nivel : VARCHAR(50)
+  capacidad_max : INT NOT NULL
+  horario : VARCHAR(200)
+  activo : BOOLEAN DEFAULT true
+}
+
+' ======= ALUMNO =======
+entity "**alumno**" as ALU #E8F5E9 {
+  * id_alumno : SERIAL <<PK>>
+  --
+  id_curso : INT <<FK>>
+  id_institucion : INT <<FK>>
+  nombres : VARCHAR(100) NOT NULL
+  apellidos : VARCHAR(100) NOT NULL
+  rut : VARCHAR(12) UNIQUE NOT NULL
+  fecha_nacimiento : DATE NOT NULL
+  foto_url : VARCHAR(300)
+  alergias : TEXT
+  medicamentos : TEXT
+  observaciones : TEXT
+  estado : VARCHAR(20) DEFAULT 'activo'
+  created_at : TIMESTAMP
+}
+
+' ======= APODERADO =======
+entity "**apoderado**" as APO #FCE4EC {
+  * id_apoderado : SERIAL <<PK>>
+  --
+  nombres : VARCHAR(100) NOT NULL
+  apellidos : VARCHAR(100) NOT NULL
+  rut : VARCHAR(12) UNIQUE NOT NULL
+  email : VARCHAR(100) UNIQUE NOT NULL
+  telefono : VARCHAR(20)
+  direccion : TEXT
+  parentesco : VARCHAR(50)
+  created_at : TIMESTAMP
+}
+
+entity "**alumno_apoderado**" as ALU_APO #FFCCBC {
+  * id_alumno : INT <<FK>>
+  * id_apoderado : INT <<FK>>
+  --
+  es_principal : BOOLEAN DEFAULT false
+  puede_retirar : BOOLEAN DEFAULT false
+}
+
+entity "**persona_autorizada_retiro**" as PAR #FFCCBC {
+  * id_par : SERIAL <<PK>>
+  --
+  id_alumno : INT <<FK>>
+  nombres : VARCHAR(100) NOT NULL
+  apellidos : VARCHAR(100) NOT NULL
+  rut : VARCHAR(12)
+  telefono : VARCHAR(20)
+  parentesco : VARCHAR(50)
+}
+
+' ======= ASISTENCIA =======
+entity "**asistencia**" as ASIST #E3F2FD {
+  * id_asistencia : SERIAL <<PK>>
+  --
+  id_alumno : INT <<FK>>
+  id_usuario_registro : INT <<FK>>
+  fecha : DATE NOT NULL
+  estado : VARCHAR(20) NOT NULL
+  hora_llegada : TIME
+  hora_salida : TIME
+  observacion : TEXT
+}
+
+' ======= MENSUALIDAD Y PAGOS =======
+entity "**mensualidad**" as MENS #FFF3E0 {
+  * id_mensualidad : SERIAL <<PK>>
+  --
+  id_alumno : INT <<FK>>
+  periodo : VARCHAR(7) NOT NULL
+  monto_total : NUMERIC(10,2) NOT NULL
+  descuento : NUMERIC(10,2) DEFAULT 0
+  beca : BOOLEAN DEFAULT false
+  estado : VARCHAR(20) DEFAULT 'pendiente'
+  fecha_vencimiento : DATE
+}
+
+entity "**pago**" as PAGO #FFF3E0 {
+  * id_pago : SERIAL <<PK>>
+  --
+  id_mensualidad : INT <<FK>>
+  id_usuario_registro : INT <<FK>>
+  monto : NUMERIC(10,2) NOT NULL
+  metodo_pago : VARCHAR(30) NOT NULL
+  fecha_pago : TIMESTAMP NOT NULL
+  comprobante_ref : VARCHAR(100)
+  observacion : TEXT
+}
+
+' ======= COMUNICACIONES =======
+entity "**comunicacion**" as COM #F3E5F5 {
+  * id_comunicacion : SERIAL <<PK>>
+  --
+  id_usuario_emisor : INT <<FK>>
+  id_curso : INT <<FK>>
+  titulo : VARCHAR(200) NOT NULL
+  cuerpo : TEXT NOT NULL
+  tipo : VARCHAR(30)
+  fecha_envio : TIMESTAMP
+  activo : BOOLEAN DEFAULT true
+}
+
+' ======= ACTIVIDAD =======
+entity "**actividad**" as ACT #FFF9C4 {
+  * id_actividad : SERIAL <<PK>>
+  --
+  id_curso : INT <<FK>>
+  id_usuario_creador : INT <<FK>>
+  titulo : VARCHAR(200) NOT NULL
+  descripcion : TEXT
+  fecha_actividad : DATE
+  tipo : VARCHAR(50)
+}
+
+' ======= MINUTA =======
+entity "**minuta**" as MIN_T #FFF9C4 {
+  * id_minuta : SERIAL <<PK>>
+  --
+  id_curso : INT <<FK>>
+  id_usuario_creador : INT <<FK>>
+  periodo : VARCHAR(20)
+  descripcion : TEXT NOT NULL
+  fecha_publicacion : DATE
+}
+
+' ======= INCIDENTE =======
+entity "**incidente**" as INCI #FFCCBC {
+  * id_incidente : SERIAL <<PK>>
+  --
+  id_alumno : INT <<FK>>
+  id_usuario_registro : INT <<FK>>
+  tipo : VARCHAR(50)
+  descripcion : TEXT NOT NULL
+  fecha_incidente : TIMESTAMP
+  accion_tomada : TEXT
+}
+
+' ======= CONTROL BIENESTAR =======
+entity "**control_bienestar**" as CBIE #FFCCBC {
+  * id_control : SERIAL <<PK>>
+  --
+  id_alumno : INT <<FK>>
+  id_usuario_registro : INT <<FK>>
+  fecha : DATE NOT NULL
+  peso_kg : NUMERIC(5,2)
+  talla_cm : NUMERIC(5,2)
+  observacion : TEXT
+}
+
+' ======= GASTOS =======
+entity "**categoria_gasto**" as CATG #E8EAF6 {
+  * id_categoria : SERIAL <<PK>>
+  --
+  nombre : VARCHAR(100) UNIQUE NOT NULL
+  descripcion : TEXT
+}
+
+entity "**proveedor**" as PROV #E8EAF6 {
+  * id_proveedor : SERIAL <<PK>>
+  --
+  razon_social : VARCHAR(150) NOT NULL
+  rut : VARCHAR(12) UNIQUE NOT NULL
+  contacto : VARCHAR(100)
+  telefono : VARCHAR(20)
+  email : VARCHAR(100)
+}
+
+entity "**gasto**" as GASTO #E8EAF6 {
+  * id_gasto : SERIAL <<PK>>
+  --
+  id_institucion : INT <<FK>>
+  id_categoria : INT <<FK>>
+  id_proveedor : INT <<FK>>
+  id_usuario_registro : INT <<FK>>
+  descripcion : TEXT NOT NULL
+  monto : NUMERIC(10,2) NOT NULL
+  fecha_gasto : DATE NOT NULL
+  tipo_movimiento : VARCHAR(10)
+}
+
+' ======= ARCHIVO ADJUNTO =======
+entity "**archivo_adjunto**" as ARCH #ECEFF1 {
+  * id_archivo : SERIAL <<PK>>
+  --
+  entidad_tipo : VARCHAR(50) NOT NULL
+  entidad_id : INT NOT NULL
+  nombre_original : VARCHAR(255)
+  s3_key : VARCHAR(500) NOT NULL
+  s3_url : VARCHAR(1000)
+  mime_type : VARCHAR(100)
+  tamanio_bytes : BIGINT
+  subido_por : INT <<FK>>
+  created_at : TIMESTAMP
+}
+
+' ======= NOTIFICACION =======
+entity "**notificacion**" as NOTI #E0F7FA {
+  * id_notificacion : SERIAL <<PK>>
+  --
+  id_usuario_destino : INT <<FK>>
+  tipo : VARCHAR(50)
+  titulo : VARCHAR(200)
+  mensaje : TEXT
+  leida : BOOLEAN DEFAULT false
+  created_at : TIMESTAMP
+}
+
+' ====== RELACIONES ======
+INST ||--o{ USR : "tiene"
+INST ||--o{ CURSO : "imparte"
+INST ||--o{ ALU : "matricula"
+INST ||--o{ GASTO : "registra"
+
+ROL ||--o{ USR : "asignado a"
+ROL ||--o{ ROL_PERM : "tiene"
+PERMISO ||--o{ ROL_PERM : "pertenece a"
+
+USR ||--o| EDUC : "puede ser"
+EDUC ||--o{ CURSO : "dicta"
+
+CURSO ||--o{ ALU : "contiene"
+CURSO ||--o{ ASIST : "asociada"
+CURSO ||--o{ COM : "destino"
+CURSO ||--o{ ACT : "programa"
+CURSO ||--o{ MIN_T : "tiene"
+
+ALU ||--o{ ALU_APO : "vincula"
+APO ||--o{ ALU_APO : "vincula"
+ALU ||--o{ PAR : "autoriza"
+ALU ||--o{ ASIST : "registra"
+ALU ||--o{ MENS : "genera"
+ALU ||--o{ INCI : "involucra"
+ALU ||--o{ CBIE : "controla"
+
+MENS ||--o{ PAGO : "recibe"
+
+USR ||--o{ COM : "emite"
+USR ||--o{ ASIST : "registra"
+USR ||--o{ PAGO : "registra"
+USR ||--o{ INCI : "registra"
+USR ||--o{ CBIE : "registra"
+USR ||--o{ GASTO : "ingresa"
+USR ||--o{ NOTI : "recibe"
+
+CATG ||--o{ GASTO : "clasifica"
+PROV ||--o{ GASTO : "proveedor"
+
+@enduml

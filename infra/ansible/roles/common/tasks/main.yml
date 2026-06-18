@@ -1,0 +1,183 @@
+---
+# Rol common — Provisioning EC2
+# NOTA: El firewall de red lo gestionan los Security Groups de AWS.
+#       UFW NO se configura (redundante con SG). Solo fail2ban para SSH brute-force.
+
+- name: 01 — Actualizar paquetes del sistema
+  apt:
+    update_cache: yes
+    upgrade: dist
+    autoremove: yes
+  tags: [update]
+
+- name: 02 — Instalar paquetes base
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - unzip
+      - fail2ban
+      - ca-certificates
+      - gnupg
+      - lsb-release
+    state: present
+  tags: [base]
+
+- name: "03 — Hardening: Deshabilitar login SSH como root"
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+    backup: yes
+  notify: restart sshd
+  tags: [hardening]
+
+- name: "04 — Hardening: Activar fail2ban (protección brute-force SSH)"
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+  tags: [hardening]
+
+- name: 05 — Agregar clave GPG de Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  tags: [docker]
+
+- name: 06 — Agregar repositorio Docker
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+  tags: [docker]
+
+- name: 07 — Instalar Docker CE + Compose plugin
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+  tags: [docker]
+
+- name: 08 — Agregar usuario ubuntu al grupo docker
+  user:
+    name: ubuntu
+    groups: docker
+    append: yes
+  tags: [docker]
+
+- name: 09 — Habilitar Docker al arranque
+  service:
+    name: docker
+    state: started
+    enabled: yes
+  tags: [docker]
+
+# ── AWS CLI v2 ──────────────────────────────────────────────
+# Requerido por scripts/inject_secrets_ssm.sh (usa "aws ssm get-parameters-by-path").
+# Ubuntu 22.04 no trae un paquete apt oficial para AWS CLI v2, se usa el
+# instalador oficial. Idempotente: se omite si "aws" ya existe.
+- name: 10 — Verificar si AWS CLI ya esta instalado
+  command: aws --version
+  register: aws_cli_check
+  failed_when: false
+  changed_when: false
+  tags: [awscli]
+
+- name: 11 — Descargar instalador oficial de AWS CLI v2
+  get_url:
+    url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+    dest: /tmp/awscliv2.zip
+    mode: '0644'
+  when: aws_cli_check.rc != 0
+  tags: [awscli]
+
+- name: 12 — Descomprimir instalador AWS CLI v2
+  unarchive:
+    src: /tmp/awscliv2.zip
+    dest: /tmp
+    remote_src: yes
+  when: aws_cli_check.rc != 0
+  tags: [awscli]
+
+- name: 13 — Instalar AWS CLI v2
+  command: /tmp/aws/install
+  when: aws_cli_check.rc != 0
+  tags: [awscli]
+
+# ── Despliegue de la aplicacion ───────────────────────────────
+- name: 14 — Crear directorio de la aplicación
+  file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+  tags: [deploy]
+
+- name: 15 — Copiar docker-compose.prod.yml como docker-compose.yml en EC2
+  # IMPORTANTE: se copia docker-compose.prod.yml (backend+frontend+nginx,
+  # SIN base de datos), nunca el docker-compose.yml local de desarrollo
+  # (ese trae un contenedor Postgres y NO debe llegar a producción).
+  copy:
+    src: "{{ playbook_dir }}/../../../docker-compose.prod.yml"
+    dest: "{{ app_dir }}/docker-compose.yml"
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+  tags: [deploy]
+
+- name: 16 — Crear directorio nginx en la app
+  file:
+    path: "{{ app_dir }}/nginx"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: '0755'
+  tags: [deploy]
+
+- name: 17 — Copiar nginx.conf (reverse proxy productivo)
+  copy:
+    src: "{{ playbook_dir }}/../../../nginx/nginx.conf"
+    dest: "{{ app_dir }}/nginx/nginx.conf"
+    owner: ubuntu
+    group: ubuntu
+    mode: '0644'
+  tags: [deploy]
+
+- name: 18 — Copiar script de inyección SSM
+  copy:
+    src: "{{ playbook_dir }}/../../../scripts/inject_secrets_ssm.sh"
+    dest: /home/ubuntu/inject_secrets.sh
+    owner: ubuntu
+    group: ubuntu
+    mode: '0700'
+  tags: [secrets, deploy]
+
+- name: 19 — Ejecutar inyección de secrets desde SSM Parameter Store
+  shell: /home/ubuntu/inject_secrets.sh
+  become_user: ubuntu
+  environment:
+    ENVIRONMENT: "{{ environment_name | default('dev') }}"
+    AWS_REGION: "{{ aws_region | default('sa-east-1') }}"
+  register: ssm_result
+  tags: [secrets, deploy]
+
+- name: 20 — Verificar que .env fue generado
+  stat:
+    path: "{{ app_dir }}/.env"
+  register: env_file
+
+- name: 21 — Fallar si .env no existe
+  fail:
+    msg: "ERROR: .env no generado. Verificar IAM role y parámetros SSM."
+  when: not env_file.stat.exists
+
+- name: 22 — Fallar si .env no tiene permisos 600
+  fail:
+    msg: "ERROR: .env tiene permisos {{ env_file.stat.mode }} — debe ser 0600 (contiene SECRET_KEY y DATABASE_URL)."
+  when: env_file.stat.exists and env_file.stat.mode != '0600'

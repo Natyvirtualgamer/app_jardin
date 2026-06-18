@@ -1,0 +1,129 @@
+@startuml 06_secuencia_autenticacion_jwt
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 10
+skinparam SequenceGroupBorderThickness 1.5
+skinparam SequenceArrowThickness 1.5
+skinparam SequenceBoxBorderColor #90A4AE
+
+skinparam participant {
+  BackgroundColor #FFFFFF
+  BorderColor #455A64
+  BorderThickness 1.5
+  FontSize 10
+}
+
+title <b>Secuencia de Autenticación JWT\nFrontend React → FastAPI → PostgreSQL</b>
+
+actor "👤 Usuario" as USR #E3F2FD
+participant "⚛️ Frontend React\n(Nginx:80)" as FE #FFF9C4
+participant "⚙️ Backend FastAPI\n(Python:8000)" as BE #E8F5E9
+database "🐘 PostgreSQL\n(RDS Privado)" as DB #FCE4EC
+
+== 🔑 Fase 1: Login Inicial ==
+
+USR -> FE : Ingresa email + contraseña\nen formulario de login
+activate FE #FFF9C4
+
+FE -> BE : POST /api/v1/auth/login\n{ "email": "...", "password": "..." }\n(HTTPS)
+activate BE #E8F5E9
+
+BE -> DB : SELECT id, hashed_password, id_rol\nFROM usuario WHERE email = $1\nAND activo = true
+activate DB #FCE4EC
+
+alt ✅ Usuario encontrado
+  DB --> BE : { id, hashed_password, rol, nombre }
+  deactivate DB
+
+  BE -> BE : bcrypt.verify(password, hashed_password)
+
+  alt ✅ Contraseña correcta
+    BE -> BE : Generar **Access Token** JWT\n{\n  sub: user_id,\n  rol: "educadora",\n  exp: now + 30min\n}\nFirmado con SECRET_KEY (env var)
+
+    BE -> BE : Generar **Refresh Token** JWT\n{\n  sub: user_id,\n  exp: now + 7days\n}\n(rotación automática)
+
+    BE --> FE : HTTP 200 OK\n{\n  access_token: "eyJ...",\n  token_type: "Bearer",\n  refresh_token: "eyJ...",\n  rol: "educadora",\n  nombre: "María González"\n}
+    deactivate BE
+
+    FE -> FE : Almacenar access_token\nen memoria React Context\n(NO en localStorage)
+    FE -> FE : Almacenar refresh_token\nen HttpOnly Cookie
+
+    FE --> USR : ✅ Redirigir a Dashboard\nsegún rol del usuario
+  else ❌ Contraseña incorrecta
+    BE --> FE : HTTP 401 Unauthorized\n{ "detail": "Credenciales inválidas" }
+    deactivate BE
+    FE --> USR : ❌ Mostrar error de login
+  end
+
+else ❌ Usuario no encontrado
+  DB --> BE : NULL
+  deactivate DB
+  BE --> FE : HTTP 401 Unauthorized
+  deactivate BE
+  FE --> USR : ❌ Mostrar error de login
+end
+
+== 🔐 Fase 2: Acceso a Endpoint Protegido ==
+
+USR -> FE : Navega a sección protegida\n(ej. Lista de alumnos)
+FE -> BE : GET /api/v1/alumnos\nAuthorization: Bearer eyJ...\n(Header HTTP)
+activate BE #E8F5E9
+
+BE -> BE : **Middleware JWT**\n1. Extraer token del Header\n2. Verificar firma con SECRET_KEY\n3. Verificar expiración (exp)\n4. Decodificar payload
+
+alt ✅ Token válido y no expirado
+  BE -> BE : **Verificar Rol y Permisos**\nrol="educadora" ¿puede GET /alumnos?\nSí → Continuar
+
+  BE -> DB : SELECT * FROM alumno\nWHERE id_institucion = $1\nORDER BY apellidos
+  activate DB #FCE4EC
+  DB --> BE : Lista de alumnos
+  deactivate DB
+
+  BE --> FE : HTTP 200 OK\n{ "alumnos": [...], "total": N }
+  deactivate BE
+  FE --> USR : ✅ Muestra lista de alumnos
+
+else ⏰ Token expirado
+  BE --> FE : HTTP 401\n{ "detail": "Token expirado" }
+  deactivate BE
+
+  FE -> BE : POST /api/v1/auth/refresh\nCookie: refresh_token=eyJ...
+  activate BE #E8F5E9
+  BE -> BE : Validar refresh_token\nGenerar nuevo access_token
+  BE --> FE : HTTP 200\n{ "access_token": "eyJnuevo..." }
+  deactivate BE
+  FE -> FE : Actualizar access_token\nen Context
+  FE -> BE : Reintentar GET /api/v1/alumnos\ncon nuevo token
+  activate BE #E8F5E9
+  BE --> FE : HTTP 200 OK ✅
+  deactivate BE
+
+else ❌ Token inválido o rol sin permiso
+  BE --> FE : HTTP 403 Forbidden\n{ "detail": "Acceso denegado" }
+  deactivate BE
+  FE --> USR : ❌ Pantalla de acceso denegado
+end
+
+== 🚪 Fase 3: Logout ==
+
+USR -> FE : Presiona "Cerrar sesión"
+FE -> FE : Eliminar access_token\ndel Context React
+FE -> BE : POST /api/v1/auth/logout\n(invalida refresh_token server-side)
+activate BE #E8F5E9
+BE --> FE : HTTP 200 OK
+deactivate BE
+FE -> FE : Eliminar HttpOnly Cookie
+FE --> USR : ✅ Redirigir a /login
+
+deactivate FE
+
+note over BE
+  <b>Variables de entorno requeridas:</b>
+  SECRET_KEY = (GitHub Secret → env var en EC2)
+  ALGORITHM = HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES = 30
+  REFRESH_TOKEN_EXPIRE_DAYS = 7
+  (Nunca en código fuente)
+end note
+
+@enduml

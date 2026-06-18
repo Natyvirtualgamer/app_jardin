@@ -1,0 +1,117 @@
+@startuml 01_arquitectura_cloud_multinube
+!define AWSCOLOR #FF9900
+!define AZURECOLOR #0078D4
+!define SECCOLOR #D32F2F
+!define NETCOLOR #1565C0
+!define DBCOLOR #2E7D32
+!define STCOLOR #6A1B9A
+
+skinparam backgroundColor #F8F9FA
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam ArrowColor #333333
+skinparam ArrowThickness 1.5
+
+skinparam rectangle {
+  RoundCorner 10
+}
+
+skinparam node {
+  RoundCorner 8
+}
+
+title <b>Arquitectura Multinube — Sistema Gestión Preescolar\n<size:10>AWS (Principal) + Azure (Secundaria/Contingencia)</size></b>
+
+' ====== USUARIOS ======
+actor "👨‍👩‍👧 Usuarios\n(Apoderados, Admin,\nEducadoras)" as USERS #E3F2FD
+
+' ====== DNS ======
+rectangle "🌐 DNS / Route 53\n(Resolución de nombres)" as DNS #FFF9C4
+
+USERS --> DNS : HTTPS
+
+' ====== AWS PRINCIPAL ======
+package "☁️  AWS — Nube Principal  (sa-east-1 | São Paulo)" as AWS #FFF3E0 {
+
+  rectangle "🛡️ IAM\n(Principio Mínimo Privilegio)" as IAM #FFCCBC
+
+  rectangle " Application Load Balancer\n(ALB — Subred Pública — HTTPS/443)" as ALB #FF9800
+
+  package "🔒 VPC Privada (10.0.0.0/16)" as VPC #FFF8E1 {
+
+    package "📡 Subred Pública (10.0.1.0/24)" as PUBSUB #FFF9C4 {
+      rectangle "🔐 Security Group\nSG-PUBLIC\nAllow: 443, 80" as SG_PUB #FFEB3B
+    }
+
+    package "🔒 Subred Privada AZ-A (10.0.2.0/24)" as PRIVSUBA #E8F5E9 {
+      node "🖥️ EC2 Linux\n(AZ-A | t3.small)\nDocker + Nginx" as EC2A #66BB6A {
+        rectangle "📦 Contenedor\nFrontend React\n(Nginx:80)" as FE_A #A5D6A7
+        rectangle "⚙️ Contenedor\nBackend FastAPI\n(Python:8000)" as BE_A #81C784
+      }
+    }
+
+    package "🔒 Subred Privada AZ-B (10.0.3.0/24)" as PRIVSUBB #E3F2FD {
+      node "🖥️ EC2 Linux\n(AZ-B | t3.small)\nDocker + Nginx" as EC2B #42A5F5 {
+        rectangle "📦 Contenedor\nFrontend React\n(Nginx:80)" as FE_B #90CAF9
+        rectangle "⚙️ Contenedor\nBackend FastAPI\n(Python:8000)" as BE_B #64B5F6
+      }
+    }
+
+    package "🔒 Subred DB Privada (10.0.4.0/24)" as DBSUB #FCE4EC {
+      database "🐘 Amazon RDS\nPostgreSQL 15\n(Multi-AZ | Sin IP Pública)\nSG-DB: Allow 5432\ndesde SG-EC2 únicamente" as RDS #EF5350
+    }
+
+  }
+
+  storage "🗂️ Amazon S3\n(Documentos, Fotos,\nRespaldos, Archivos PDF)" as S3 #FF7043
+
+}
+
+' ====== AZURE SECUNDARIA ======
+package "☁️  Azure — Nube Secundaria / Contingencia  (Brazil South)" as AZURE #E3F2FD {
+
+  rectangle "🔒 NSG\n(Network Security Group)" as NSG #1565C0
+
+  storage "📦 Azure Blob Storage\n(Réplica archivos críticos\ndesde S3 vía script nocturno)" as BLOB #1976D2
+
+  database "🐘 Azure Database\nfor PostgreSQL\nFlexible Server\n(Contingencia conceptual)\nNo activa en producción normal" as AZDB #1565C0
+
+}
+
+' ====== GHCR ======
+rectangle "🐳 GitHub Container Registry\n(GHCR)\nImagenes Docker versionadas\nfrontend:tag | backend:tag" as GHCR #7B1FA2
+
+' ====== FLUJOS PRINCIPALES ======
+DNS --> ALB : HTTPS :443
+ALB --> EC2A : Balanceo Round-Robin
+ALB --> EC2B : Balanceo Round-Robin
+
+EC2A --> RDS : Puerto 5432 (SG privado)
+EC2B --> RDS : Puerto 5432 (SG privado)
+
+EC2A --> S3 : SDK AWS (archivos)
+EC2B --> S3 : SDK AWS (archivos)
+
+' ====== FLUJO GHCR → EC2 ======
+GHCR --> EC2A : docker pull (GitHub Actions deploy)
+GHCR --> EC2B : docker pull (GitHub Actions deploy)
+
+' ====== FLUJO RESPALDO AZURE ======
+S3 --> BLOB : Sync via pipeline\n(job sync-azure, CI/CD)
+RDS ..> AZDB : Sin pg_dump - PITR nativo\n(BackupRetentionPeriod=7).\nAZDB solo contingencia conceptual
+
+IAM -[hidden]- VPC
+NSG -[hidden]- BLOB
+
+legend right
+  |= Componente |= Rol |
+  | ALB | Entrada HTTPS única |
+  | EC2 x2 AZ | Alta disponibilidad básica |
+  | RDS Multi-AZ | BD productiva sin exposición |
+  | S3 | Archivos y respaldos primarios |
+  | GHCR | Registro de imágenes Docker |
+  | Azure Blob | Réplica secundaria de archivos |
+  | Azure PG | Contingencia conceptual |
+endlegend
+
+@enduml

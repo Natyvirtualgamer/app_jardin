@@ -1,0 +1,32 @@
+---
+# Playbook Principal — Configuración de EC2 Linux (Ubuntu 22.04)
+# Ansible >= 2.15
+# Uso: ansible-playbook -i inventory.ini playbooks/site.yml
+
+- name: Configurar nodos EC2 para jardín infantil
+  hosts: app_servers
+  become: yes
+  gather_facts: yes
+
+  vars:
+    app_dir: /home/ubuntu/app-jardin
+    docker_compose_version: "2.27.0"
+
+  roles:
+    - common
+
+  post_tasks:
+    - name: Verificar Docker activo
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Verificar deploy básico
+      shell: docker ps --format '{{ "{{" }}.Names{{ "}}" }}'
+      register: containers
+      changed_when: false
+
+    - name: Mostrar contenedores activos
+      debug:
+        msg: "Contenedores activos: {{ containers.stdout_lines }}"
