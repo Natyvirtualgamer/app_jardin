@@ -1,7 +1,7 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Description: >
   EC2 (x2 AZ), ALB, IAM Role con SSM+S3
-  Sistema Gestion Preescolar — app-jardin
+  Sistema Gestion Preescolar - app-jardin
 
 Parameters:
   Environment:
@@ -20,56 +20,13 @@ Parameters:
     Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
 
 Resources:
-  # ── IAM Role EC2 ──────────────────────────────────────────
-  EC2Role:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "jardin-ec2-role-${Environment}"
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ec2.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: [s3:GetObject, s3:PutObject, s3:DeleteObject, s3:ListBucket]
-                Resource:
-                  - !Sub "arn:aws:s3:::jardin-${Environment}-files-*"
-                  - !Sub "arn:aws:s3:::jardin-${Environment}-files-*/*"
-        - PolicyName: SSMAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: [ssm:GetParameter, ssm:GetParameters, ssm:GetParametersByPath]
-                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/jardin/${Environment}/*"
-              - Effect: Allow
-                Action: kms:Decrypt
-                Resource: "*"
-                Condition:
-                  StringEquals:
-                    kms:ViaService: !Sub "ssm.${AWS::Region}.amazonaws.com"
-
-  EC2InstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: !Sub "jardin-ec2-profile-${Environment}"
-      Roles: [!Ref EC2Role]
-
-  # ── EC2 instancias ────────────────────────────────────────
+  # -- EC2 instancias ----------------------------------------
   EC2A:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: !Ref LatestUbuntuAMI
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyPairName
-      IamInstanceProfile: !Ref EC2InstanceProfile
       SubnetId:
         Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicA"
       SecurityGroupIds:
@@ -86,7 +43,6 @@ Resources:
       ImageId: !Ref LatestUbuntuAMI
       InstanceType: !Ref InstanceType
       KeyName: !Ref KeyPairName
-      IamInstanceProfile: !Ref EC2InstanceProfile
       SubnetId:
         Fn::ImportValue: !Sub "jardin-${Environment}-SubnetPublicC"
       SecurityGroupIds:
@@ -97,7 +53,7 @@ Resources:
         - Key: Project
           Value: app-jardin
 
-  # ── Application Load Balancer ──────────────────────────────
+  # -- Application Load Balancer ------------------------------
   ALB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
