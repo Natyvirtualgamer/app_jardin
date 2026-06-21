@@ -225,7 +225,7 @@ jobs:
       - name: Ansible verify
         run: |
           ansible app_servers -i /tmp/inventory.ini \
-            -m shell -a "docker ps --format 'table {{.Names}}\t{{.Status}}'" --one-line
+            -m shell -a "docker ps --no-trunc" --one-line
 
       - name: Limpiar SSH key
         if: always()
