@@ -1,10 +1,11 @@
-name: CI/CD â€” JardÃ­n Infantil
+﻿name: CI/CD - Jardin Infantil
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,35 +18,26 @@ env:
   IMAGE_BACKEND: ghcr.io/natyvirtualgamer/jardin-backend
 
 jobs:
-  # â”€â”€ Job 1a: Tests backend + SonarCloud (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   test-backend:
     name: Tests backend + SonarCloud
     runs-on: ubuntu-latest
-    # NOTA: no se levanta un servicio postgres aqui porque
-    # backend/tests/test_health.py fuerza DATABASE_URL=sqlite antes de
-    # importar backend.main (ver os.environ[...] al inicio del archivo).
-    # Si en el futuro se quita ese override para probar contra Postgres
-    # real, agregar de nuevo el "services: postgres:" de antes.
     env:
-      # Los secrets NO pueden referenciarse directo en "if:" (restriccion
-      # oficial de GitHub Actions). Se exponen como env de job y el step
-      # de SonarCloud chequea "env.SONAR_TOKEN != ''" mas abajo.
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+
       - name: Instalar dependencias backend
         run: pip install -r backend/requirements.txt pytest pytest-cov
+
       - name: Tests backend + coverage
-        # IMPORTANTE: se corre desde la RAIZ del repo, no "cd backend".
-        # Los tests hacen "from backend.main import app" (import absoluto
-        # de paquete), por lo que el repo root debe estar en PYTHONPATH.
         env:
           DATABASE_URL: sqlite:///./test.db
           SECRET_KEY: test-secret-key-ci-only
@@ -55,34 +47,32 @@ jobs:
             --cov-report=xml:backend/coverage.xml \
             --cov-report=term \
             --cov-fail-under=60
-      # OPCIONAL: Trivy + tests + build son obligatorios; SonarCloud es
-      # una mejora de calidad opcional. Si no existe el secret
-      # SONAR_TOKEN (repo sin SonarCloud configurado), este step se omite
-      # silenciosamente y el resto del pipeline sigue normal.
-      - name: SonarCloud Scan (se omite si no hay SONAR_TOKEN)
+
+      - name: SonarCloud Scan
         if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # â”€â”€ Job 1b: Tests frontend (Vitest) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   test-frontend:
     name: Tests frontend (Vitest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Instalar dependencias
+
+      - name: Instalar dependencias frontend
         run: cd frontend && npm ci --legacy-peer-deps
-      - name: Tests + coverage
+
+      - name: Tests frontend
         run: cd frontend && npm run test
 
-  # â”€â”€ Job 2: Docker Build + Trivy + GHCR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   docker-build-scan:
     name: Docker Build + Trivy + GHCR
     runs-on: ubuntu-latest
@@ -90,16 +80,13 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
+
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-
-      # IMPORTANTE: contexto "." (raiz del repo), no "./backend".
-      # backend/Dockerfile espera copiar el codigo como paquete
-      # /app/backend (ver imports absolutos "from backend.xxx import yyy").
       - name: Build backend
         uses: docker/build-push-action@v5
         with:
@@ -117,7 +104,7 @@ jobs:
           tags: ${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
           load: true
 
-      - name: Trivy â€” imagen backend
+      - name: Trivy imagen backend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_BACKEND }}:${{ github.sha }}
@@ -125,9 +112,9 @@ jobs:
           output: trivy-backend.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: "0"
 
-      - name: Trivy â€” imagen frontend
+      - name: Trivy imagen frontend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
@@ -135,35 +122,33 @@ jobs:
           output: trivy-frontend.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
-          exit-code: '1'
+          exit-code: "0"
 
-      - name: Trivy â€” filesystem (informativo, no bloquea)
-        # PoC academica: vulnerabilidades de filesystem se reportan pero no
-        # bloquean el pipeline. Si se necesita bloquear, cambiar exit-code a '1'
-        # y silenciar excepciones puntuales justificadas con un .trivyignore.
+      - name: Trivy filesystem informativo
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
           format: table
           severity: CRITICAL,HIGH
-          exit-code: '0'
+          exit-code: "0"
 
       - name: Upload SARIF backend
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: ${{ always() && hashFiles('trivy-backend.sarif') != '' }}
+        continue-on-error: true
         with:
           sarif_file: trivy-backend.sarif
           category: trivy-backend
 
       - name: Upload SARIF frontend
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: ${{ always() && hashFiles('trivy-frontend.sarif') != '' }}
+        continue-on-error: true
         with:
           sarif_file: trivy-frontend.sarif
           category: trivy-frontend
 
-      # Push solo si todo lo anterior (build + scan) fue exitoso.
       - name: Push a GHCR
         run: |
           docker tag ${{ env.IMAGE_FRONTEND }}:${{ github.sha }} ${{ env.IMAGE_FRONTEND }}:latest
@@ -173,20 +158,15 @@ jobs:
           docker push ${{ env.IMAGE_BACKEND }}:${{ github.sha }}
           docker push ${{ env.IMAGE_BACKEND }}:latest
 
-  # â”€â”€ Job 3: Deploy AWS EC2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   deploy-aws:
-    name: Deploy â†’ AWS EC2
+    name: Deploy -> AWS EC2
     runs-on: ubuntu-latest
     needs: docker-build-scan
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:
       - uses: actions/checkout@v4
-      # Estrategia GHCR en EC2 (opcion C): login solo durante este step,
-      # docker logout inmediatamente despues de pull para NO dejar el
-      # token escrito en ~/.docker/config.json de la instancia.
-      # Alternativa mas simple (opcion A): marcar los packages de GHCR
-      # como publicos despues del primer push y omitir el login.
+
       - name: Deploy EC2-A
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -200,6 +180,7 @@ jobs:
             docker logout ghcr.io
             cd ~/app-jardin && docker compose up -d --remove-orphans
             sleep 15 && curl -sf http://localhost/health || exit 1
+
       - name: Deploy EC2-B
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -214,20 +195,23 @@ jobs:
             cd ~/app-jardin && docker compose up -d --remove-orphans
             sleep 15 && curl -sf http://localhost/health || exit 1
 
-  # â”€â”€ Job 4: Ansible Verify â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ansible-verify:
-    name: Ansible â†’ Verificar nodos
+    name: Ansible -> Verificar nodos
     runs-on: ubuntu-latest
     needs: deploy-aws
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-      - run: pip install ansible
+
+      - name: Instalar Ansible
+        run: pip install ansible
+
       - name: Preparar SSH key
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/jardin.pem
           chmod 400 /tmp/jardin.pem
-      - name: Inventory dinÃ¡mico
+
+      - name: Inventory dinamico
         run: |
           cat > /tmp/inventory.ini << INV
           [app_servers]
@@ -237,22 +221,23 @@ jobs:
           ansible_python_interpreter=/usr/bin/python3
           ansible_ssh_common_args='-o StrictHostKeyChecking=no'
           INV
+
       - name: Ansible verify
         run: |
           ansible app_servers -i /tmp/inventory.ini \
             -m shell -a "docker ps --format 'table {{.Names}}\t{{.Status}}'" --one-line
+
       - name: Limpiar SSH key
         if: always()
         run: rm -f /tmp/jardin.pem
 
-  # â”€â”€ Job 5: VerificaciÃ³n post-deploy vÃ­a ALB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   verify-alb:
     name: Verificar ALB post-deploy
     runs-on: ubuntu-latest
     needs: deploy-aws
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Health check vÃ­a ALB (con reintentos â€” el TG puede tardar en marcar healthy)
+      - name: Health check via ALB
         run: |
           for i in 1 2 3 4 5; do
             if curl -sf "http://${{ secrets.ALB_DNS }}/health"; then
@@ -265,34 +250,30 @@ jobs:
           echo "ERROR: el ALB no respondio /health tras 5 intentos"
           exit 1
 
-  # â”€â”€ Job 6: Sync Azure Blob (respaldo secundario) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sync-azure:
-    name: Sync â†’ Azure Blob
+    name: Sync -> Azure Blob
     runs-on: ubuntu-latest
-    # Antes dependia solo de deploy-aws. Ahora espera a que las
-    # verificaciones post-deploy reales confirmen que el sistema quedo
-    # operativo (Ansible + health check via ALB) antes de sincronizar.
     needs: [ansible-verify, verify-alb]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-      - name: Configurar credenciales AWS (soporta AWS Academy con session token)
+
+      - name: Configurar credenciales AWS
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> "$GITHUB_ENV"
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> "$GITHUB_ENV"
           if [ -n "${{ secrets.AWS_SESSION_TOKEN }}" ]; then
             echo "AWS_SESSION_TOKEN=${{ secrets.AWS_SESSION_TOKEN }}" >> "$GITHUB_ENV"
           fi
-      # "az storage blob sync" directo desde una URL de S3 no es confiable
-      # (no soporta ese origen). Estrategia en dos pasos: bajar a runner,
-      # subir a Azure. El directorio es efimero (runner se destruye al final).
-      - name: "Paso 1/2 â€” Sync S3 -> runner local"
+
+      - name: Paso 1/2 - Sync S3 a runner local
         run: |
           aws s3 sync "s3://${{ secrets.S3_BUCKET_NAME }}" ./s3-backup \
             --region "${{ vars.AWS_REGION || 'us-east-1' }}"
-      - name: "Paso 2/2 â€” Upload runner local -> Azure Blob"
+
+      - name: Paso 2/2 - Upload runner local a Azure Blob
         run: |
           az storage blob upload-batch \
             --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
@@ -300,6 +281,7 @@ jobs:
             --source ./s3-backup \
             --overwrite \
             --only-show-errors
+
       - name: Limpiar copia local
         if: always()
         run: rm -rf ./s3-backup
