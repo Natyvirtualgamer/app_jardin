@@ -1,4 +1,4 @@
-name: CI/CD — Jardín Infantil
+name: CI/CD â€” JardÃ­n Infantil
 
 on:
   push:
@@ -13,11 +13,11 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_FRONTEND: ghcr.io/${{ github.repository_owner }}/jardin-frontend
-  IMAGE_BACKEND: ghcr.io/${{ github.repository_owner }}/jardin-backend
+  IMAGE_FRONTEND: ghcr.io/natyvirtualgamer/jardin-frontend
+  IMAGE_BACKEND: ghcr.io/natyvirtualgamer/jardin-backend
 
 jobs:
-  # ── Job 1a: Tests backend + SonarCloud (opcional) ─────────
+  # â”€â”€ Job 1a: Tests backend + SonarCloud (opcional) â”€â”€â”€â”€â”€â”€â”€â”€â”€
   test-backend:
     name: Tests backend + SonarCloud
     runs-on: ubuntu-latest
@@ -66,7 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # ── Job 1b: Tests frontend (Vitest) ───────────────────────
+  # â”€â”€ Job 1b: Tests frontend (Vitest) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   test-frontend:
     name: Tests frontend (Vitest)
     runs-on: ubuntu-latest
@@ -82,7 +82,7 @@ jobs:
       - name: Tests + coverage
         run: cd frontend && npm run test
 
-  # ── Job 2: Docker Build + Trivy + GHCR ───────────────────
+  # â”€â”€ Job 2: Docker Build + Trivy + GHCR â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   docker-build-scan:
     name: Docker Build + Trivy + GHCR
     runs-on: ubuntu-latest
@@ -95,6 +95,7 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
 
       # IMPORTANTE: contexto "." (raiz del repo), no "./backend".
       # backend/Dockerfile espera copiar el codigo como paquete
@@ -116,7 +117,7 @@ jobs:
           tags: ${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
           load: true
 
-      - name: Trivy — imagen backend
+      - name: Trivy â€” imagen backend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_BACKEND }}:${{ github.sha }}
@@ -126,7 +127,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
 
-      - name: Trivy — imagen frontend
+      - name: Trivy â€” imagen frontend
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_FRONTEND }}:${{ github.sha }}
@@ -136,7 +137,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
 
-      - name: Trivy — filesystem (informativo, no bloquea)
+      - name: Trivy â€” filesystem (informativo, no bloquea)
         # PoC academica: vulnerabilidades de filesystem se reportan pero no
         # bloquean el pipeline. Si se necesita bloquear, cambiar exit-code a '1'
         # y silenciar excepciones puntuales justificadas con un .trivyignore.
@@ -172,9 +173,9 @@ jobs:
           docker push ${{ env.IMAGE_BACKEND }}:${{ github.sha }}
           docker push ${{ env.IMAGE_BACKEND }}:latest
 
-  # ── Job 3: Deploy AWS EC2 ─────────────────────────────────
+  # â”€â”€ Job 3: Deploy AWS EC2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   deploy-aws:
-    name: Deploy → AWS EC2
+    name: Deploy â†’ AWS EC2
     runs-on: ubuntu-latest
     needs: docker-build-scan
     if: github.ref == 'refs/heads/main'
@@ -213,9 +214,9 @@ jobs:
             cd ~/app-jardin && docker compose up -d --remove-orphans
             sleep 15 && curl -sf http://localhost/health || exit 1
 
-  # ── Job 4: Ansible Verify ─────────────────────────────────
+  # â”€â”€ Job 4: Ansible Verify â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   ansible-verify:
-    name: Ansible → Verificar nodos
+    name: Ansible â†’ Verificar nodos
     runs-on: ubuntu-latest
     needs: deploy-aws
     if: github.ref == 'refs/heads/main'
@@ -226,7 +227,7 @@ jobs:
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > /tmp/jardin.pem
           chmod 400 /tmp/jardin.pem
-      - name: Inventory dinámico
+      - name: Inventory dinÃ¡mico
         run: |
           cat > /tmp/inventory.ini << INV
           [app_servers]
@@ -244,14 +245,14 @@ jobs:
         if: always()
         run: rm -f /tmp/jardin.pem
 
-  # ── Job 5: Verificación post-deploy vía ALB ───────────────
+  # â”€â”€ Job 5: VerificaciÃ³n post-deploy vÃ­a ALB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   verify-alb:
     name: Verificar ALB post-deploy
     runs-on: ubuntu-latest
     needs: deploy-aws
     if: github.ref == 'refs/heads/main'
     steps:
-      - name: Health check vía ALB (con reintentos — el TG puede tardar en marcar healthy)
+      - name: Health check vÃ­a ALB (con reintentos â€” el TG puede tardar en marcar healthy)
         run: |
           for i in 1 2 3 4 5; do
             if curl -sf "http://${{ secrets.ALB_DNS }}/health"; then
@@ -264,9 +265,9 @@ jobs:
           echo "ERROR: el ALB no respondio /health tras 5 intentos"
           exit 1
 
-  # ── Job 6: Sync Azure Blob (respaldo secundario) ──────────
+  # â”€â”€ Job 6: Sync Azure Blob (respaldo secundario) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   sync-azure:
-    name: Sync → Azure Blob
+    name: Sync â†’ Azure Blob
     runs-on: ubuntu-latest
     # Antes dependia solo de deploy-aws. Ahora espera a que las
     # verificaciones post-deploy reales confirmen que el sistema quedo
@@ -287,11 +288,11 @@ jobs:
       # "az storage blob sync" directo desde una URL de S3 no es confiable
       # (no soporta ese origen). Estrategia en dos pasos: bajar a runner,
       # subir a Azure. El directorio es efimero (runner se destruye al final).
-      - name: "Paso 1/2 — Sync S3 -> runner local"
+      - name: "Paso 1/2 â€” Sync S3 -> runner local"
         run: |
           aws s3 sync "s3://${{ secrets.S3_BUCKET_NAME }}" ./s3-backup \
             --region "${{ vars.AWS_REGION || 'us-east-1' }}"
-      - name: "Paso 2/2 — Upload runner local -> Azure Blob"
+      - name: "Paso 2/2 â€” Upload runner local -> Azure Blob"
         run: |
           az storage blob upload-batch \
             --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
