@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   RDS PostgreSQL (PITR habilitado, sin IP publica) + S3
-  Sistema Gestion Preescolar — app-jardin
+  Sistema Gestion Preescolar - app-jardin
 
 Parameters:
   Environment:
@@ -38,7 +38,7 @@ Parameters:
     Description: "Recomendado 'true' en prod para evitar borrado accidental de la RDS"
 
 Resources:
-  # ── RDS Subnet Group ──────────────────────────────────────
+  # -- RDS Subnet Group --------------------------------------
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
@@ -50,9 +50,9 @@ Resources:
         - Key: Name
           Value: !Sub "jardin-db-subnet-${Environment}"
 
-  # ── RDS PostgreSQL ────────────────────────────────────────
+  # -- RDS PostgreSQL ----------------------------------------
   # PITR: BackupRetentionPeriod > 0 activa PITR nativo de RDS.
-  # Recuperacion: AWS Console → RDS → Restore to point in time.
+  # Recuperacion: AWS Console - RDS - Restore to point in time.
   # NO se usa pg_dump; el PITR cubre recuperacion a cualquier
   # segundo dentro de la ventana de retencion.
   RDSInstance:
@@ -92,7 +92,7 @@ Resources:
         - Key: BackupStrategy
           Value: PITR-nativo-RDS
 
-  # ── S3 Bucket ─────────────────────────────────────────────
+  # -- S3 Bucket ---------------------------------------------
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:

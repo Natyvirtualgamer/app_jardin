@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   VPC, Subnets, Internet Gateway, Security Groups
-  Sistema Gestion Preescolar — app-jardin
+  Sistema Gestion Preescolar --- app-jardin
 
 Parameters:
   Environment:
@@ -16,7 +16,7 @@ Parameters:
     Description: "Tu IP publica con mascara /32 para acceso SSH (obligatorio, sin default por seguridad)"
 
 Resources:
-  # ── VPC ────────────────────────────────────────────────────
+  # ------ VPC ------------------------------------------------------------------------------------------------------------------------------------------------------------
   VPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -42,7 +42,7 @@ Resources:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref IGW
 
-  # ── Subnets ────────────────────────────────────────────────
+  # ------ Subnets ------------------------------------------------------------------------------------------------------------------------------------------------
   SubnetPublicA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -93,7 +93,7 @@ Resources:
       AvailabilityZone: !Select [1, !GetAZs ""]
       Tags: [{Key: Name, Value: !Sub "jardin-db-c-${Environment}"}]
 
-  # ── Route Table pública ────────────────────────────────────
+  # ------ Route Table p--blica ------------------------------------------------------------------------------------------------------------
   RouteTablePublic:
     Type: AWS::EC2::RouteTable
     Properties:
@@ -120,12 +120,12 @@ Resources:
       SubnetId: !Ref SubnetPublicC
       RouteTableId: !Ref RouteTablePublic
 
-  # ── Security Groups ───────────────────────────────────────
+  # ------ Security Groups ---------------------------------------------------------------------------------------------------------------------
   # ALB: acepta HTTPS/HTTP desde internet
   SGALB:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub "sg-alb-${Environment}"
+      GroupName: !Sub "jardin-alb-${Environment}"
       GroupDescription: "ALB - permite 443 y 80 desde internet"
       VpcId: !Ref VPC
       SecurityGroupIngress:
@@ -137,13 +137,13 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: "0.0.0.0/0"
-      Tags: [{Key: Name, Value: !Sub "sg-alb-${Environment}"}]
+      Tags: [{Key: Name, Value: !Sub "jardin-alb-${Environment}"}]
 
   # EC2: acepta 80 desde ALB y 22 desde IP admin
   SGEC2:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub "sg-ec2-${Environment}"
+      GroupName: !Sub "jardin-ec2-${Environment}"
       GroupDescription: "EC2 - 80 desde ALB, 22 desde IP admin"
       VpcId: !Ref VPC
       SecurityGroupIngress:
@@ -155,13 +155,13 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: !Ref AdminIP
-      Tags: [{Key: Name, Value: !Sub "sg-ec2-${Environment}"}]
+      Tags: [{Key: Name, Value: !Sub "jardin-ec2-${Environment}"}]
 
   # RDS: acepta 5432 solo desde EC2
   SGRDS:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Sub "sg-rds-${Environment}"
+      GroupName: !Sub "jardin-rds-${Environment}"
       GroupDescription: "RDS - 5432 solo desde sg-ec2"
       VpcId: !Ref VPC
       SecurityGroupIngress:
@@ -169,7 +169,7 @@ Resources:
           FromPort: 5432
           ToPort: 5432
           SourceSecurityGroupId: !Ref SGEC2
-      Tags: [{Key: Name, Value: !Sub "sg-rds-${Environment}"}]
+      Tags: [{Key: Name, Value: !Sub "jardin-rds-${Environment}"}]
 
 Outputs:
   VpcId:
