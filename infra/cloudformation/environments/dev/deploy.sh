@@ -1,11 +1,11 @@
 #!/bin/bash
-# deploy.sh — Desplegar stacks CloudFormation en ambiente DEV
+# deploy.sh â€” Desplegar stacks CloudFormation en ambiente DEV
 set -euo pipefail
 ENV="dev"
 REGION="us-east-1"
 ADMIN_IP=$(curl -s ifconfig.me)/32
 KEY_PAIR="jardin-key-dev"
-echo "Desplegando $ENV en $REGION — IP admin: $ADMIN_IP"
+echo "Desplegando $ENV en $REGION â€” IP admin: $ADMIN_IP"
 
 echo "[1/3] VPC y Security Groups..."
 aws cloudformation deploy \
@@ -19,7 +19,7 @@ echo "[2/3] EC2 y ALB..."
 aws cloudformation deploy \
   --template-file ../../templates/ec2-alb.yaml \
   --stack-name "jardin-${ENV}-ec2-alb" \
-  --parameter-overrides Environment="$ENV" InstanceType="t3.micro" KeyPairName="$KEY_PAIR" \
+  --parameter-overrides Environment="$ENV" InstanceType="t2.micro" KeyPairName="$KEY_PAIR" \
   --capabilities CAPABILITY_NAMED_IAM \
   --region "$REGION" --no-fail-on-empty-changeset
 
