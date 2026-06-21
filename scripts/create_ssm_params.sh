@@ -12,7 +12,7 @@
 set -euo pipefail
 
 ENVIRONMENT="${ENVIRONMENT:-dev}"
-AWS_REGION="${AWS_REGION:-sa-east-1}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 SSM_PATH="/jardin/${ENVIRONMENT}"
 
 DB_USER="${DB_USER:-jardin_user}"

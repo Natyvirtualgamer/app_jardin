@@ -1,7 +1,7 @@
 #!/bin/bash
 # destroy.sh — Eliminar todos los stacks del ambiente PROD
 set -euo pipefail
-ENV="prod"; REGION="${AWS_REGION:-sa-east-1}"
+ENV="prod"; REGION="${AWS_REGION:-us-east-1}"
 echo "ADVERTENCIA: Elimina toda la infra de PRODUCCION ($ENV)."
 read -p "Escribir si para confirmar: " C
 [ "$C" = "si" ] || { echo "Cancelado."; exit 0; }

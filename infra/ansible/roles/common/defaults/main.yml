@@ -3,4 +3,4 @@
 #   ansible-playbook -i inventory.ini playbooks/site.yml -e environment_name=prod
 app_dir: /home/ubuntu/app-jardin
 environment_name: dev
-aws_region: sa-east-1
+aws_region: us-east-1

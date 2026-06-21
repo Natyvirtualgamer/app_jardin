@@ -184,7 +184,7 @@ docker push ghcr.io/TU_ORG/jardin-backend:latest
 aws configure
 # AWS Access Key ID:     (desde consola AWS → IAM → Security credentials)
 # AWS Secret Access Key: ...
-# Default region name:   sa-east-1
+# Default region name:   us-east-1
 # Default output format: json
 ```
 
@@ -195,7 +195,7 @@ aws ec2 create-key-pair \
   --key-name jardin-key-dev \
   --query 'KeyMaterial' \
   --output text \
-  --region sa-east-1 > ~/.ssh/jardin-key-dev.pem
+  --region us-east-1 > ~/.ssh/jardin-key-dev.pem
 
 chmod 400 ~/.ssh/jardin-key-dev.pem
 ```
@@ -259,7 +259,7 @@ pip install ansible
 ```bash
 # Obtener IPs desde los outputs de CloudFormation
 aws cloudformation describe-stacks --stack-name jardin-dev-ec2-alb \
-  --query "Stacks[0].Outputs" --region sa-east-1
+  --query "Stacks[0].Outputs" --region us-east-1
 
 # Editar infra/ansible/inventory.ini con esas IPs (grupo [app_servers])
 nano infra/ansible/inventory.ini
@@ -442,19 +442,19 @@ ssh -i ~/.ssh/jardin-key-dev.pem ubuntu@IP_EC2_A \
 
 ```bash
 # 1. Detener EC2-A (reemplazar INSTANCE_ID_EC2_A por el real)
-aws ec2 stop-instances --instance-ids INSTANCE_ID_EC2_A --region sa-east-1
+aws ec2 stop-instances --instance-ids INSTANCE_ID_EC2_A --region us-east-1
 
 # 2. Confirmar que el Target Group marca EC2-A como unhealthy (toma ~30-60s)
 TG_ARN=$(aws cloudformation describe-stacks --stack-name jardin-dev-ec2-alb \
   --query "Stacks[0].Outputs[?OutputKey=='TargetGroupArn'].OutputValue" \
-  --output text --region sa-east-1)
-aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region sa-east-1
+  --output text --region us-east-1)
+aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region us-east-1
 
 # 3. Confirmar que el ALB sigue respondiendo (ahora 100% vía EC2-B)
 curl http://TU_ALB_DNS/health
 
 # 4. Encender de nuevo EC2-A y confirmar que vuelve a healthy
-aws ec2 start-instances --instance-ids INSTANCE_ID_EC2_A --region sa-east-1
+aws ec2 start-instances --instance-ids INSTANCE_ID_EC2_A --region us-east-1
 # Esperar 1-2 min, luego repetir el paso 2 — EC2-A debe volver a "healthy"
 ```
 
@@ -482,7 +482,7 @@ ssh -i ~/.ssh/jardin-key-dev.pem ubuntu@IP_EC2_A \
 # 6. Verificar que RDS no tiene IP pública
 aws rds describe-db-instances \
   --query "DBInstances[*].[DBInstanceIdentifier,PubliclyAccessible]" \
-  --output table --region sa-east-1
+  --output table --region us-east-1
 
 # 7. Verificar Azure Blob
 az storage blob list \

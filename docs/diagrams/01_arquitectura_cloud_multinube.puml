@@ -31,7 +31,7 @@ rectangle "🌐 DNS / Route 53\n(Resolución de nombres)" as DNS #FFF9C4
 USERS --> DNS : HTTPS
 
 ' ====== AWS PRINCIPAL ======
-package "☁️  AWS — Nube Principal  (sa-east-1 | São Paulo)" as AWS #FFF3E0 {
+package "☁️  AWS — Nube Principal  (us-east-1 | N. Virginia)" as AWS #FFF3E0 {
 
   rectangle "🛡️ IAM\n(Principio Mínimo Privilegio)" as IAM #FFCCBC
 

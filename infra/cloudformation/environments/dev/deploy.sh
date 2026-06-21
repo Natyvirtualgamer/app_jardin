@@ -2,7 +2,7 @@
 # deploy.sh — Desplegar stacks CloudFormation en ambiente DEV
 set -euo pipefail
 ENV="dev"
-REGION="sa-east-1"
+REGION="us-east-1"
 ADMIN_IP=$(curl -s ifconfig.me)/32
 KEY_PAIR="jardin-key-dev"
 echo "Desplegando $ENV en $REGION — IP admin: $ADMIN_IP"

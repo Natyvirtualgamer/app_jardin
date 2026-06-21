@@ -290,7 +290,7 @@ jobs:
       - name: "Paso 1/2 — Sync S3 -> runner local"
         run: |
           aws s3 sync "s3://${{ secrets.S3_BUCKET_NAME }}" ./s3-backup \
-            --region "${{ vars.AWS_REGION || 'sa-east-1' }}"
+            --region "${{ vars.AWS_REGION || 'us-east-1' }}"
       - name: "Paso 2/2 — Upload runner local -> Azure Blob"
         run: |
           az storage blob upload-batch \

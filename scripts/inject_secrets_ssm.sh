@@ -5,12 +5,12 @@
 #
 # Variables de entorno esperadas (las inyecta Ansible, ver roles/common/tasks/main.yml):
 #   ENVIRONMENT (default: dev)
-#   AWS_REGION  (default: sa-east-1)
+#   AWS_REGION  (default: us-east-1)
 
 set -euo pipefail
 
 ENVIRONMENT="${ENVIRONMENT:-dev}"
-AWS_REGION="${AWS_REGION:-sa-east-1}"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 SSM_PATH="/jardin/${ENVIRONMENT}"
 
 APP_DIR="/home/ubuntu/app-jardin"

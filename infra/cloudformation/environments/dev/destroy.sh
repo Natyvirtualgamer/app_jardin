@@ -1,7 +1,7 @@
 #!/bin/bash
 # destroy.sh — Eliminar todos los stacks del ambiente DEV
 set -euo pipefail
-ENV="dev"; REGION="sa-east-1"
+ENV="dev"; REGION="us-east-1"
 echo "ADVERTENCIA: Elimina toda la infra de $ENV."
 read -p "Escribir si para confirmar: " C
 [ "$C" = "si" ] || { echo "Cancelado."; exit 0; }

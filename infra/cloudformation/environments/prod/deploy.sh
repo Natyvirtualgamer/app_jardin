@@ -2,7 +2,7 @@
 # deploy.sh — Desplegar stacks CloudFormation en ambiente PROD
 set -euo pipefail
 ENV="prod"
-REGION="${AWS_REGION:-sa-east-1}"
+REGION="${AWS_REGION:-us-east-1}"
 ADMIN_IP=$(curl -s ifconfig.me)/32
 KEY_PAIR="${KEY_PAIR:-jardin-key-prod}"
 echo "Desplegando $ENV en $REGION — IP admin: $ADMIN_IP"

@@ -16,7 +16,7 @@ Plataforma web multinube para gestión de jardines infantiles, salas cuna y cent
 | Registro    | GitHub Container Registry (GHCR)  |
 | IaC         | AWS CloudFormation                |
 | Config Mgmt | Ansible 2.15+                     |
-| Nube primaria | AWS (sa-east-1)                 |
+| Nube primaria | AWS (us-east-1)                 |
 | Nube secundaria | Azure (Brazil South)          |
 
 ## Flujo oficial de despliegue (evaluación / producción)

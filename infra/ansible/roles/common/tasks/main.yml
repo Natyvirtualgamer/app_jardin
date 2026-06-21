@@ -163,7 +163,7 @@
   become_user: ubuntu
   environment:
     ENVIRONMENT: "{{ environment_name | default('dev') }}"
-    AWS_REGION: "{{ aws_region | default('sa-east-1') }}"
+    AWS_REGION: "{{ aws_region | default('us-east-1') }}"
   register: ssm_result
   tags: [secrets, deploy]
 
