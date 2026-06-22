@@ -1,9 +1,9 @@
----
-# Playbook Principal — Configuración de EC2 Linux (Ubuntu 22.04)
+﻿---
+# Playbook Principal â€” ConfiguraciÃ³n de EC2 Linux (Ubuntu 22.04)
 # Ansible >= 2.15
 # Uso: ansible-playbook -i inventory.ini playbooks/site.yml
 
-- name: Configurar nodos EC2 para jardín infantil
+- name: Configurar nodos EC2 para jardÃ­n infantil
   hosts: app_servers
   become: yes
   gather_facts: yes
@@ -22,8 +22,8 @@
         state: started
         enabled: yes
 
-    - name: Verificar deploy básico
-      shell: docker ps --format '{{ "{{" }}.Names{{ "}}" }}'
+    - name: Verificar deploy bÃ¡sico
+      shell: docker ps --no-trunc
       register: containers
       changed_when: false
 

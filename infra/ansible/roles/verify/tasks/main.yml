@@ -1,4 +1,4 @@
----
+﻿---
 - name: Verificar Docker activo
   systemd:
     name: docker
@@ -14,7 +14,7 @@
     msg: "{{ compose_version.stdout }}"
 
 - name: Listar contenedores activos
-  shell: docker ps --format "table {{ '{{' }}.Names{{ '}}' }}\t{{ '{{' }}.Status{{ '}}' }}"
+  shell: docker ps --no-trunc
   register: containers
   changed_when: false
 
