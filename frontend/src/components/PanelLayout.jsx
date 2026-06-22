@@ -14,10 +14,13 @@ const NAV_ITEMS = [
   { path: '/pagos', label: 'Pagos', icon: '💰' },
 ]
 
+const NAV_ITEM_ADMIN = { path: '/usuarios', label: 'Usuarios', icon: '🔑' }
+
 export default function PanelLayout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_ADMIN] : NAV_ITEMS
 
   return (
     <div style={styles.container}>
@@ -26,7 +29,7 @@ export default function PanelLayout({ children, title }) {
           🌻 Jardín Infantil
         </span>
         <div style={styles.links}>
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
