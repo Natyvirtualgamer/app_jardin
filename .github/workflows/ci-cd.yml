@@ -256,10 +256,7 @@ jobs:
     needs: [ansible-verify, verify-alb]
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+      -
       - name: Configurar credenciales AWS
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> "$GITHUB_ENV"
@@ -277,6 +274,7 @@ jobs:
         run: |
           az storage blob upload-batch \
             --account-name "${{ secrets.AZURE_STORAGE_ACCOUNT }}" \
+            --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
             --destination jardin-backup \
             --source ./s3-backup \
             --overwrite \
