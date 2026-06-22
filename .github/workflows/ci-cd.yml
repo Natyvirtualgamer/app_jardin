@@ -256,7 +256,6 @@ jobs:
     needs: [ansible-verify, verify-alb]
     if: github.ref == 'refs/heads/main'
     steps:
-      -
       - name: Configurar credenciales AWS
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> "$GITHUB_ENV"
