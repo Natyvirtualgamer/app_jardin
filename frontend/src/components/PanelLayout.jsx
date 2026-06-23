@@ -9,12 +9,12 @@ import { colors, shadows } from '../theme.js'
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Inicio', icon: '🏠' },
   { path: '/alumnos', label: 'Alumnos', icon: '👧' },
-  { path: '/apoderados', label: 'Apoderados', icon: '👥' },
   { path: '/cursos', label: 'Cursos', icon: '📚' },
   { path: '/asistencia', label: 'Asistencia', icon: '📅' },
   { path: '/pagos', label: 'Pagos', icon: '💰' },
 ]
 
+const NAV_ITEM_APODERADOS = { path: '/apoderados', label: 'Apoderados', icon: '👥' }
 const NAV_ITEM_EDUCADORAS = { path: '/educadoras', label: 'Educadoras', icon: '🍎' }
 const NAV_ITEM_ADMIN = { path: '/usuarios', label: 'Usuarios', icon: '🔑' }
 
@@ -22,13 +22,14 @@ export default function PanelLayout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_EDUCADORAS, NAV_ITEM_ADMIN] : NAV_ITEMS
+  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_APODERADOS, NAV_ITEM_EDUCADORAS, NAV_ITEM_ADMIN] : NAV_ITEMS
 
   return (
     <div style={styles.container}>
       <nav style={styles.nav}>
         <span style={styles.brand} onClick={() => navigate('/dashboard')}>
-          🌻 Jardín Infantil
+          <span style={styles.logoMark}>PM</span>
+          <span>Preescolar <em>Manager</em></span>
         </span>
         <div style={styles.links}>
           {navItems.map((item) => (
@@ -60,23 +61,25 @@ export default function PanelLayout({ children, title }) {
 }
 
 const styles = {
-  container: { minHeight: '100vh', background: colors.bgLight },
+  container: { minHeight: '100vh', background: 'linear-gradient(180deg, #eef7ff 0%, #f8fcff 45%, #ffffff 100%)' },
   nav: {
-    background: colors.primary, color: '#fff', padding: '0.85rem 1.5rem',
+    background: '#ffffff', color: colors.textDark, padding: '0.9rem 1.5rem',
     display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
-    boxShadow: shadows.card,
+    boxShadow: '0 8px 24px rgba(15, 35, 75, 0.08)',
+    borderBottom: `1px solid ${colors.border}`,
   },
-  brand: { fontWeight: '700', cursor: 'pointer', fontSize: '1.05rem' },
+  brand: { display: 'inline-flex', alignItems: 'center', gap: '0.65rem', fontWeight: '800', cursor: 'pointer', fontSize: '1.05rem', color: colors.primaryDark },
+  logoMark: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '12px', background: colors.primary, color: '#fff', fontSize: '0.78rem', boxShadow: shadows.card },
   links: { display: 'flex', gap: '0.4rem', flex: 1, flexWrap: 'wrap' },
   link: {
-    background: 'transparent', border: 'none', color: '#fff', opacity: 0.85,
+    background: 'transparent', border: 'none', color: colors.textDark, opacity: 0.82,
     padding: '0.45rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.88rem',
   },
-  linkActive: { background: 'rgba(255,255,255,0.2)', opacity: 1, fontWeight: '600' },
+  linkActive: { background: colors.primaryLight, color: colors.primaryDark, opacity: 1, fontWeight: '700' },
   right: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  userInfo: { fontSize: '0.85rem', opacity: 0.9 },
+  userInfo: { fontSize: '0.85rem', opacity: 0.9, color: colors.textMuted },
   logoutBtn: {
-    background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)',
+    background: colors.primary, color: '#fff', border: `1px solid ${colors.primary}`,
     padding: '0.4rem 0.9rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
   },
   main: { padding: '2rem', maxWidth: '1100px', margin: '0 auto' },

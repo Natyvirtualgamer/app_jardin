@@ -10,6 +10,7 @@ const VACIO = { id_institucion: 1, id_educadora: '', nombre: '', nivel: '', capa
 
 export default function CursosPage() {
   const [cursos, setCursos] = useState([])
+  const [educadoras, setEducadoras] = useState([])
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(VACIO)
@@ -17,8 +18,14 @@ export default function CursosPage() {
 
   function cargar() {
     setLoading(true)
-    api.get('/cursos/')
-      .then((res) => setCursos(res.data))
+    Promise.all([
+      api.get('/cursos/'),
+      api.get('/auth/educadoras').catch(() => ({ data: [] })),
+    ])
+      .then(([cursosRes, educadorasRes]) => {
+        setCursos(cursosRes.data)
+        setEducadoras(educadorasRes.data)
+      })
       .finally(() => setLoading(false))
   }
 
@@ -27,7 +34,7 @@ export default function CursosPage() {
   function abrirNuevo() { setForm({ ...VACIO }); setEditando({}) }
   function abrirEditar(c) {
     setForm({
-      id_institucion: 1, id_educadora: '',
+      id_institucion: 1, id_educadora: c.id_educadora ?? '',
       nombre: c.nombre, nivel: c.nivel ?? '', capacidad_max: c.capacidad_max, horario: c.horario ?? '',
     })
     setEditando(c)
@@ -60,6 +67,11 @@ export default function CursosPage() {
     cargar()
   }
 
+  function nombreEducadora(idEducadora) {
+    const educadora = educadoras.find((e) => e.id_educadora === idEducadora)
+    return educadora ? `${educadora.nombre} ${educadora.apellido}` : 'Sin educadora asignada'
+  }
+
   return (
     <PanelLayout title="📚 Cursos">
       <div style={styles.toolbar}>
@@ -73,7 +85,7 @@ export default function CursosPage() {
             <div key={c.id_curso} style={styles.card}>
               <h3 style={styles.cardTitle}>{c.nombre}</h3>
               <p style={styles.cardMeta}>{c.nivel ?? 'Nivel sin definir'} · Capacidad {c.capacidad_max}</p>
-              <p style={styles.cardMeta}>Sin educadora asignada</p>
+              <p style={styles.cardMeta}>{nombreEducadora(c.id_educadora)}</p>
               <p style={styles.cardMeta}>{c.horario ?? 'Horario sin definir'}</p>
               <div style={styles.cardActions}>
                 <button style={styles.actionBtn} onClick={() => abrirEditar(c)}>Editar</button>
@@ -93,6 +105,7 @@ export default function CursosPage() {
             <Campo label="Horario" value={form.horario} onChange={(v) => setForm({ ...form, horario: v })} placeholder="Lunes a viernes 08:30 - 16:30" />
             <SelectEducadora
               value={form.id_educadora}
+              educadoras={educadoras}
               onChange={(v) => setForm({ ...form, id_educadora: v })}
             />
             <button type="submit" disabled={guardando} style={styles.saveBtn}>{guardando ? 'Guardando...' : 'Guardar'}</button>
@@ -113,7 +126,7 @@ function Campo({ label, value, onChange, type = 'text', required, placeholder })
   )
 }
 
-function SelectEducadora({ value, onChange }) {
+function SelectEducadora({ value, educadoras, onChange }) {
   return (
     <div style={styles.field}>
       <label htmlFor="curso-educadora" style={styles.label}>Educadora a cargo</label>
@@ -124,6 +137,11 @@ function SelectEducadora({ value, onChange }) {
         style={styles.input}
       >
         <option value="">Sin educadora asignada</option>
+        {educadoras.map((educadora) => (
+          <option key={educadora.id_educadora} value={educadora.id_educadora}>
+            {educadora.nombre} {educadora.apellido}
+          </option>
+        ))}
       </select>
     </div>
   )

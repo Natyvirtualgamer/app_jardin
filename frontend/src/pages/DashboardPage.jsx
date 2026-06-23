@@ -1,36 +1,50 @@
-// pages/DashboardPage.jsx — Ahora usa PanelLayout (nav compartido) en vez
-// de dibujar su propio <nav>. Las tarjetas siguen llevando a /alumnos,
-// /cursos, /asistencia, /pagos — rutas que antes no existian en App.jsx.
 import { useNavigate } from 'react-router-dom'
 import PanelLayout from '../components/PanelLayout.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
-const CARDS = [
-  { icon: '👧', label: 'Alumnos', link: '/alumnos', color: colors.primaryLight },
-  { icon: '👥', label: 'Apoderados', link: '/apoderados', color: '#e8f5e9' },
-  { icon: '📚', label: 'Cursos', link: '/cursos', color: '#f3e5f5' },
-  { icon: '🍎', label: 'Educadoras', link: '/educadoras', color: '#fce4ec' },
-  { icon: '📅', label: 'Asistencia', link: '/asistencia', color: '#e3f2fd' },
-  { icon: '💰', label: 'Pagos', link: '/pagos', color: '#fff3e0' },
-  { icon: '🔑', label: 'Usuarios', link: '/usuarios', color: '#ede7f6' },
+const BASE_CARDS = [
+  { icon: '👧', label: 'Alumnos', link: '/alumnos', text: 'Matricula y fichas', color: '#eaf2ff' },
+  { icon: '📚', label: 'Cursos', link: '/cursos', text: 'Niveles y cupos', color: '#fff7df' },
+  { icon: '📅', label: 'Asistencia', link: '/asistencia', text: 'Registro diario', color: '#e8f4ff' },
+  { icon: '💰', label: 'Pagos', link: '/pagos', text: 'Mensualidades', color: '#fff0df' },
+]
+
+const ADMIN_CARDS = [
+  { icon: '👥', label: 'Apoderados', link: '/apoderados', text: 'Familias y accesos', color: '#e9f8f1' },
+  { icon: '🍎', label: 'Educadoras', link: '/educadoras', text: 'Personal pedagogico', color: '#fce9f1' },
+  { icon: '🔑', label: 'Usuarios', link: '/usuarios', text: 'CRUD de personal', color: '#eef0ff' },
 ]
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const cards = user?.rol === 'administrador' ? [...BASE_CARDS, ...ADMIN_CARDS] : BASE_CARDS
 
   return (
-    <PanelLayout title="Panel de Gestión">
+    <PanelLayout title="Panel de gestión">
+      <section style={styles.hero}>
+        <div>
+          <p style={styles.kicker}>Administración</p>
+          <h2 style={styles.heroTitle}>Gestiona la operación diaria desde un solo menú</h2>
+          <p style={styles.heroText}>Accede a los módulos reales del proyecto: alumnos, apoderados, cursos, asistencia, pagos y usuarios del personal.</p>
+        </div>
+        <button style={styles.primaryBtn} onClick={() => navigate('/usuarios')}>Crear usuario o personal</button>
+      </section>
+
       <div style={styles.grid}>
-        {CARDS.map((card) => (
-          <div
+        {cards.map((card) => (
+          <button
             key={card.label}
             style={{ ...styles.card, background: card.color }}
             onClick={() => navigate(card.link)}
           >
             <span style={styles.cardIcon}>{card.icon}</span>
-            <h3 style={styles.cardLabel}>{card.label}</h3>
-            <p style={styles.cardCta}>Ir al módulo →</p>
-          </div>
+            <span>
+              <strong style={styles.cardLabel}>{card.label}</strong>
+              <small style={styles.cardText}>{card.text}</small>
+            </span>
+          </button>
         ))}
       </div>
     </PanelLayout>
@@ -38,9 +52,14 @@ export default function DashboardPage() {
 }
 
 const styles = {
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' },
-  card: { padding: '1.5rem', borderRadius: '12px', cursor: 'pointer', boxShadow: shadows.card },
-  cardIcon: { fontSize: '2rem', display: 'block', marginBottom: '0.5rem' },
-  cardLabel: { margin: '0 0 0.5rem', color: colors.textDark, fontSize: '1.05rem' },
-  cardCta: { margin: 0, fontSize: '0.85rem', color: colors.primaryDark, fontWeight: '600' },
+  hero: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1.25rem', background: '#fff', borderRadius: '16px', padding: '1.5rem', marginBottom: '1.5rem', boxShadow: shadows.card, border: `1px solid ${colors.border}`, flexWrap: 'wrap' },
+  kicker: { margin: '0 0 0.4rem', color: colors.secondary, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '900', fontSize: '0.75rem' },
+  heroTitle: { margin: '0 0 0.45rem', color: colors.primaryDark, fontSize: '1.6rem' },
+  heroText: { margin: 0, color: colors.textMuted, lineHeight: 1.5, maxWidth: '680px' },
+  primaryBtn: { background: colors.primary, color: '#fff', border: 'none', borderRadius: '10px', padding: '0.8rem 1rem', fontWeight: '800', cursor: 'pointer' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' },
+  card: { display: 'flex', alignItems: 'center', gap: '1rem', textAlign: 'left', border: `1px solid ${colors.border}`, padding: '1.15rem', borderRadius: '14px', cursor: 'pointer', boxShadow: shadows.card },
+  cardIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '52px', height: '52px', borderRadius: '50%', background: '#fff', fontSize: '1.45rem', flexShrink: 0 },
+  cardLabel: { display: 'block', color: colors.primaryDark, fontSize: '1rem', marginBottom: '0.25rem' },
+  cardText: { display: 'block', color: colors.textMuted, fontSize: '0.82rem' },
 }

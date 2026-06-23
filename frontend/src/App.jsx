@@ -39,7 +39,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
           <Route path="/alumnos" element={<PrivateRoute><AlumnosPage /></PrivateRoute>} />
-          <Route path="/apoderados" element={<PrivateRoute><ApoderadosPage /></PrivateRoute>} />
+          <Route path="/apoderados" element={<AdminRoute><ApoderadosPage /></AdminRoute>} />
           <Route path="/cursos" element={<PrivateRoute><CursosPage /></PrivateRoute>} />
           <Route path="/educadoras" element={<AdminRoute><EducadorasPage /></AdminRoute>} />
           <Route path="/asistencia" element={<PrivateRoute><AsistenciaPage /></PrivateRoute>} />
