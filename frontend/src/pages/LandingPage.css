@@ -1,0 +1,83 @@
+.landing-page {
+  overflow-x: hidden;
+}
+
+.landing-nav strong,
+.landing-nav em {
+  display: block;
+  line-height: 1.05;
+}
+
+.landing-nav em {
+  color: #35b779;
+  font-style: normal;
+}
+
+@media (max-width: 1024px) {
+  .landing-modulos {
+    grid-template-columns: repeat(2, minmax(240px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-nav {
+    justify-content: center !important;
+    padding: 0.85rem 1rem !important;
+  }
+
+  .landing-nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    gap: 0.35rem !important;
+  }
+
+  .landing-nav-button {
+    flex: 1 1 100%;
+    max-width: 260px;
+  }
+
+  .landing-hero {
+    min-height: auto !important;
+    padding: 2rem 1rem !important;
+    text-align: center;
+  }
+
+  .landing-hero > div:first-child {
+    margin: 0 auto;
+  }
+
+  .landing-hero-media-wrap {
+    min-height: 240px !important;
+    height: 62vw !important;
+    border-radius: 22px !important;
+  }
+
+  .landing-modulos {
+    grid-template-columns: 1fr !important;
+    max-width: 440px !important;
+  }
+
+  .landing-modulo-card {
+    min-height: auto;
+  }
+
+  .landing-contact-section {
+    padding: 3rem 1rem !important;
+  }
+
+  .landing-contact-form {
+    padding: 1.1rem !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-nav-links button {
+    font-size: 0.86rem;
+    padding-inline: 0.25rem !important;
+  }
+
+  .landing-modulo-card {
+    align-items: center !important;
+  }
+}

@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import LoginModal from '../components/LoginModal.jsx'
 import heroImage from '../assets/hero-classroom.png'
 import { colors, shadows } from '../theme.js'
+import './LandingPage.css'
 
 const WHATSAPP_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || '56912345678'
 const WHATSAPP_GROUP_URL = import.meta.env.VITE_WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/Db9jSyj7IuxI18s0WdAyH4'
 
 const MODULOS = [
-  { icon: '👧', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
-  { icon: '📚', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.' },
-  { icon: '📅', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.' },
-  { icon: '💰', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.' },
-  { icon: '👥', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.' },
-  { icon: '🔑', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.' },
+  { icon: 'A', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
+  { icon: 'C', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.' },
+  { icon: 'AS', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.' },
+  { icon: 'AP', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.' },
+  { icon: 'U', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.' },
+  { icon: 'P', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.' },
 ]
 
 const CONTACTO_INICIAL = { nombre: '', jardin: '', correo: '', telefono: '', mensaje: '' }
@@ -25,47 +26,51 @@ function scrollTo(id) {
 export default function LandingPage() {
   const [showLogin, setShowLogin] = useState(false)
   const [contacto, setContacto] = useState(CONTACTO_INICIAL)
+  const [contactoAviso, setContactoAviso] = useState('')
   const navigate = useNavigate()
 
   function enviarWhatsApp(e) {
     e.preventDefault()
-    const texto = `Hola, quiero solicitar información/demo de App Jardín.
+    const texto = `Hola, quiero solicitar informacion/demo de App Jardin.
 Nombre: ${contacto.nombre}
-Jardín/Institución: ${contacto.jardin}
+Jardin/Institucion: ${contacto.jardin}
 Correo: ${contacto.correo}
-Teléfono: ${contacto.telefono}
-Mensaje: ${contacto.mensaje}`
-    const destino = WHATSAPP_GROUP_URL
-      ? WHATSAPP_GROUP_URL
-      : `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(texto)}`
+Telefono: ${contacto.telefono}
+Mensaje: ${contacto.mensaje || 'Quiero recibir mas informacion.'}`
 
     if (WHATSAPP_GROUP_URL) {
-      window.location.href = destino
+      const mensajeGrupo = `${texto}
+
+Grupo App Jardin: ${WHATSAPP_GROUP_URL}`
+      setContactoAviso('WhatsApp se abrira con el mensaje listo. Selecciona el grupo de App Jardin y presiona enviar.')
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeGrupo)}`, '_blank', 'noopener,noreferrer')
       return
     }
-    window.location.href = destino
+
+    setContactoAviso('WhatsApp se abrira con el mensaje listo para enviar.')
+    window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 
   return (
-    <div style={styles.page}>
-      <nav style={styles.nav}>
+    <div className="landing-page" style={styles.page}>
+      <nav className="landing-nav" style={styles.nav}>
         <button style={styles.brand} onClick={() => scrollTo('inicio')} aria-label="Ir al inicio">
           <span style={styles.logoIcon}>PM</span>
           <span><strong>Preescolar</strong><em>Manager</em></span>
         </button>
-        <div style={styles.navLinks}>
+        <div className="landing-nav-links" style={styles.navLinks}>
           <button style={styles.navLinkActive} onClick={() => scrollTo('inicio')}>Inicio</button>
           <button style={styles.navLink} onClick={() => scrollTo('funciones')}>Funciones</button>
           <button style={styles.navLink} onClick={() => scrollTo('planes')}>Planes</button>
           <button style={styles.navLink} onClick={() => scrollTo('contacto')}>Contacto</button>
         </div>
-        <button style={styles.navButton} onClick={() => scrollTo('contacto')}>Solicitar demo</button>
+        <button className="landing-nav-button" style={styles.navButton} onClick={() => scrollTo('contacto')}>Solicitar demo</button>
       </nav>
 
-      <header id="inicio" style={styles.hero}>
+      <header id="inicio" className="landing-hero" style={styles.hero}>
         <div style={styles.heroCopy}>
-          <p style={styles.kicker}>Sistema de gestión preescolar</p>
-          <h1 style={styles.heroTitle}>Gestiona tu jardín infantil en un solo lugar</h1>
+          <p style={styles.kicker}>Sistema de gestion preescolar</p>
+          <h1 style={styles.heroTitle}>Gestiona tu jardin infantil en un solo lugar</h1>
           <p style={styles.heroSubtitle}>
             Alumnos, cursos, asistencia, pagos, apoderados y usuarios para centros educativos,
             conectados con tu backend real y datos persistentes.
@@ -75,7 +80,7 @@ Mensaje: ${contacto.mensaje}`
             <button style={styles.heroButtonOutline} onClick={() => scrollTo('funciones')}>Ver funciones</button>
           </div>
         </div>
-        <div style={styles.heroMediaWrap}>
+        <div className="landing-hero-media-wrap" style={styles.heroMediaWrap}>
           <img src={heroImage} alt="Educadora usando una tablet en sala de jardin infantil" style={styles.heroMedia} />
         </div>
       </header>
@@ -83,11 +88,11 @@ Mensaje: ${contacto.mensaje}`
       <section id="funciones" style={styles.section}>
         <div style={styles.sectionHeader}>
           <p style={styles.kicker}>Funciones</p>
-          <h2 style={styles.sectionTitle}>Módulos listos para la demo</h2>
+          <h2 style={styles.sectionTitle}>Modulos listos para la demo</h2>
         </div>
-        <div style={styles.modulos}>
+        <div className="landing-modulos" style={styles.modulos}>
           {MODULOS.map((modulo) => (
-            <article key={modulo.titulo} style={styles.moduloCard}>
+            <article key={modulo.titulo} className="landing-modulo-card" style={styles.moduloCard}>
               <span style={styles.moduloIcon}>{modulo.icon}</span>
               <div>
                 <h3 style={styles.moduloTitulo}>{modulo.titulo}</h3>
@@ -102,23 +107,23 @@ Mensaje: ${contacto.mensaje}`
         <div style={styles.planContent}>
           <p style={styles.kicker}>Planes</p>
           <h2 style={styles.sectionTitleLeft}>Una base funcional para crecer</h2>
-          <p style={styles.textLine}>Esta versión mantiene login, dashboard, CRUDs principales, RDS, ALB, dos EC2 y despliegue por GitHub Actions.</p>
+          <p style={styles.textLine}>Esta version mantiene login, dashboard, CRUDs principales, RDS, ALB, dos EC2 y despliegue por GitHub Actions.</p>
           <button style={styles.heroButtonPrimary} onClick={() => scrollTo('contacto')}>Solicitar demo</button>
         </div>
       </section>
 
-      <section id="contacto" style={styles.contactSection}>
+      <section id="contacto" className="landing-contact-section" style={styles.contactSection}>
         <div style={styles.contactCopy}>
           <p style={styles.kicker}>Contacto</p>
-          <h2 style={styles.sectionTitleLeft}>Agenda una revisión por WhatsApp</h2>
-          <p style={styles.textLine}>Completa el formulario y se abrirá WhatsApp con el mensaje preparado. No depende del backend y no rompe el flujo de la app.</p>
+          <h2 style={styles.sectionTitleLeft}>Agenda una revision por WhatsApp</h2>
+          <p style={styles.textLine}>Completa el formulario y se abrira WhatsApp con el mensaje preparado. Selecciona el grupo de App Jardin y presiona enviar.</p>
         </div>
-        <form onSubmit={enviarWhatsApp} style={styles.contactForm}>
+        <form className="landing-contact-form" onSubmit={enviarWhatsApp} style={styles.contactForm}>
           <Campo label="Nombre" value={contacto.nombre} onChange={(v) => setContacto({ ...contacto, nombre: v })} required />
-          <Campo label="Nombre del jardín o institución" value={contacto.jardin} onChange={(v) => setContacto({ ...contacto, jardin: v })} required />
+          <Campo label="Nombre del jardin o institucion" value={contacto.jardin} onChange={(v) => setContacto({ ...contacto, jardin: v })} required />
           <div style={styles.formGrid}>
             <Campo label="Correo" type="email" value={contacto.correo} onChange={(v) => setContacto({ ...contacto, correo: v })} required />
-            <Campo label="Teléfono" value={contacto.telefono} onChange={(v) => setContacto({ ...contacto, telefono: v })} required />
+            <Campo label="Telefono" value={contacto.telefono} onChange={(v) => setContacto({ ...contacto, telefono: v })} required />
           </div>
           <div style={styles.field}>
             <label htmlFor="contacto-mensaje" style={styles.label}>Mensaje</label>
@@ -130,6 +135,7 @@ Mensaje: ${contacto.mensaje}`
               style={styles.textarea}
             />
           </div>
+          {contactoAviso && <p style={styles.contactHint}>{contactoAviso}</p>}
           <button type="submit" style={styles.saveBtn}>Enviar por WhatsApp</button>
         </form>
       </section>
@@ -185,9 +191,9 @@ const styles = {
   sectionHeader: { textAlign: 'center', marginBottom: '2rem' },
   sectionTitle: { margin: 0, color: colors.primaryDark, fontSize: '2rem' },
   sectionTitleLeft: { margin: '0 0 1rem', color: colors.primaryDark, fontSize: '2rem' },
-  modulos: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.25rem' },
+  modulos: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(250px, 1fr))', gap: '1.25rem', maxWidth: '1200px', margin: '0 auto' },
   moduloCard: { display: 'flex', alignItems: 'flex-start', gap: '1rem', background: '#fff', borderRadius: '14px', padding: '1.3rem', boxShadow: shadows.card, border: `1px solid ${colors.border}` },
-  moduloIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '58px', height: '58px', borderRadius: '50%', background: colors.primaryLight, fontSize: '1.55rem', flexShrink: 0 },
+  moduloIcon: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '58px', height: '58px', borderRadius: '50%', background: colors.primaryLight, color: colors.primaryDark, fontSize: '1rem', fontWeight: 900, flexShrink: 0 },
   moduloTitulo: { margin: '0 0 0.45rem', color: colors.primaryDark },
   moduloTexto: { margin: 0, color: colors.textMuted, lineHeight: 1.5 },
   band: { padding: '3.5rem 6vw', background: '#fff' },
@@ -201,6 +207,7 @@ const styles = {
   label: { display: 'block', marginBottom: '0.35rem', color: colors.textDark, fontWeight: '700', fontSize: '0.9rem' },
   input: { width: '100%', padding: '0.72rem', border: `1.5px solid ${colors.border}`, borderRadius: '9px', fontSize: '0.95rem', boxSizing: 'border-box' },
   textarea: { width: '100%', padding: '0.72rem', border: `1.5px solid ${colors.border}`, borderRadius: '9px', fontSize: '0.95rem', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' },
+  contactHint: { margin: '0 0 1rem', color: colors.textMuted, lineHeight: 1.45, fontWeight: 700 },
   saveBtn: { width: '100%', padding: '0.85rem', background: colors.secondary, color: '#fff', border: 'none', borderRadius: '10px', fontWeight: '900', cursor: 'pointer' },
   footer: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1.25rem 6vw', background: colors.primaryDark, color: '#fff', flexWrap: 'wrap' },
   footerLink: { background: 'transparent', border: '1px solid rgba(255,255,255,0.5)', color: '#fff', borderRadius: '8px', padding: '0.55rem 0.9rem', cursor: 'pointer' },
