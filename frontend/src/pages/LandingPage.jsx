@@ -8,12 +8,12 @@ import './LandingPage.css'
 const WHATSAPP_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || '56987778172'
 
 const MODULOS = [
-  { icon: 'student', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
-  { icon: 'courses', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.' },
-  { icon: 'attendance', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.' },
-  { icon: 'family', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.' },
-  { icon: 'users', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.' },
-  { icon: 'payments', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.' },
+  { icon: 'student', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.', color: '#2f63df', bg: '#eaf2ff' },
+  { icon: 'courses', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.', color: '#35b779', bg: '#e9f8f1' },
+  { icon: 'attendance', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.', color: '#f4b523', bg: '#fff6dc' },
+  { icon: 'family', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.', color: '#7c5cff', bg: '#f0edff' },
+  { icon: 'users', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.', color: '#16a6b7', bg: '#e6f8fb' },
+  { icon: 'payments', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.', color: '#e06f2f', bg: '#fff0e8' },
 ]
 
 const CONTACTO_INICIAL = { nombre: '', jardin: '', correo: '', telefono: '', mensaje: '' }
@@ -83,7 +83,7 @@ Mensaje: ${contacto.mensaje || 'Quiero recibir mas informacion.'}`
         <div className="landing-modulos" style={styles.modulos}>
           {MODULOS.map((modulo) => (
             <article key={modulo.titulo} className="landing-modulo-card" style={styles.moduloCard}>
-              <span style={styles.moduloIcon}>
+              <span style={{ ...styles.moduloIcon, background: modulo.bg, color: modulo.color }}>
                 <ModuloIcon name={modulo.icon} />
               </span>
               <div>
