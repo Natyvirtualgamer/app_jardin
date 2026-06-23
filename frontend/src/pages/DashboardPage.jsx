@@ -7,9 +7,12 @@ import { colors, shadows } from '../theme.js'
 
 const CARDS = [
   { icon: '👧', label: 'Alumnos', link: '/alumnos', color: colors.primaryLight },
+  { icon: '👥', label: 'Apoderados', link: '/apoderados', color: '#e8f5e9' },
+  { icon: '📚', label: 'Cursos', link: '/cursos', color: '#f3e5f5' },
+  { icon: '🍎', label: 'Educadoras', link: '/educadoras', color: '#fce4ec' },
   { icon: '📅', label: 'Asistencia', link: '/asistencia', color: '#e3f2fd' },
   { icon: '💰', label: 'Pagos', link: '/pagos', color: '#fff3e0' },
-  { icon: '📚', label: 'Cursos', link: '/cursos', color: '#f3e5f5' },
+  { icon: '🔑', label: 'Usuarios', link: '/usuarios', color: '#ede7f6' },
 ]
 
 export default function DashboardPage() {

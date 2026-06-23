@@ -22,11 +22,16 @@ class AlumnoCreate(BaseModel):
 
 class AlumnoOut(BaseModel):
     id_alumno: int
+    id_curso: int | None
+    id_institucion: int
     nombres: str
     apellidos: str
     rut: str
     fecha_nacimiento: date
     estado: str
+    alergias: str | None
+    medicamentos: str | None
+    observaciones: str | None
     class Config:
         from_attributes = True
 

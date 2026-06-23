@@ -18,6 +18,8 @@ class CursoCreate(BaseModel):
 
 class CursoOut(BaseModel):
     id_curso: int
+    id_institucion: int
+    id_educadora: int | None
     nombre: str
     nivel: str | None
     capacidad_max: int

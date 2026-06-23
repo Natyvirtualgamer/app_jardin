@@ -17,15 +17,17 @@ export default function CursosPage() {
 
   function cargar() {
     setLoading(true)
-    api.get('/cursos/').then((res) => setCursos(res.data)).finally(() => setLoading(false))
+    api.get('/cursos/')
+      .then((res) => setCursos(res.data))
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => { cargar() }, [])
 
-  function abrirNuevo() { setForm(VACIO); setEditando({}) }
+  function abrirNuevo() { setForm({ ...VACIO }); setEditando({}) }
   function abrirEditar(c) {
     setForm({
-      id_institucion: 1, id_educadora: c.id_educadora ?? '',
+      id_institucion: 1, id_educadora: '',
       nombre: c.nombre, nivel: c.nivel ?? '', capacidad_max: c.capacidad_max, horario: c.horario ?? '',
     })
     setEditando(c)
@@ -71,6 +73,7 @@ export default function CursosPage() {
             <div key={c.id_curso} style={styles.card}>
               <h3 style={styles.cardTitle}>{c.nombre}</h3>
               <p style={styles.cardMeta}>{c.nivel ?? 'Nivel sin definir'} · Capacidad {c.capacidad_max}</p>
+              <p style={styles.cardMeta}>Sin educadora asignada</p>
               <p style={styles.cardMeta}>{c.horario ?? 'Horario sin definir'}</p>
               <div style={styles.cardActions}>
                 <button style={styles.actionBtn} onClick={() => abrirEditar(c)}>Editar</button>
@@ -88,7 +91,10 @@ export default function CursosPage() {
             <Campo label="Nivel" value={form.nivel} onChange={(v) => setForm({ ...form, nivel: v })} placeholder="Sala cuna / Medio / Transición" />
             <Campo label="Capacidad máxima" type="number" value={form.capacidad_max} onChange={(v) => setForm({ ...form, capacidad_max: v })} required />
             <Campo label="Horario" value={form.horario} onChange={(v) => setForm({ ...form, horario: v })} placeholder="Lunes a viernes 08:30 - 16:30" />
-            <Campo label="ID Educadora (opcional)" type="number" value={form.id_educadora} onChange={(v) => setForm({ ...form, id_educadora: v })} />
+            <SelectEducadora
+              value={form.id_educadora}
+              onChange={(v) => setForm({ ...form, id_educadora: v })}
+            />
             <button type="submit" disabled={guardando} style={styles.saveBtn}>{guardando ? 'Guardando...' : 'Guardar'}</button>
           </form>
         </Modal>
@@ -103,6 +109,22 @@ function Campo({ label, value, onChange, type = 'text', required, placeholder })
     <div style={styles.field}>
       <label htmlFor={id} style={styles.label}>{label}</label>
       <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} style={styles.input} />
+    </div>
+  )
+}
+
+function SelectEducadora({ value, onChange }) {
+  return (
+    <div style={styles.field}>
+      <label htmlFor="curso-educadora" style={styles.label}>Educadora a cargo</label>
+      <select
+        id="curso-educadora"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={styles.input}
+      >
+        <option value="">Sin educadora asignada</option>
+      </select>
     </div>
   )
 }

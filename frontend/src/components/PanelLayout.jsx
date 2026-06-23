@@ -9,18 +9,20 @@ import { colors, shadows } from '../theme.js'
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Inicio', icon: '🏠' },
   { path: '/alumnos', label: 'Alumnos', icon: '👧' },
+  { path: '/apoderados', label: 'Apoderados', icon: '👥' },
   { path: '/cursos', label: 'Cursos', icon: '📚' },
   { path: '/asistencia', label: 'Asistencia', icon: '📅' },
   { path: '/pagos', label: 'Pagos', icon: '💰' },
 ]
 
+const NAV_ITEM_EDUCADORAS = { path: '/educadoras', label: 'Educadoras', icon: '🍎' }
 const NAV_ITEM_ADMIN = { path: '/usuarios', label: 'Usuarios', icon: '🔑' }
 
 export default function PanelLayout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_ADMIN] : NAV_ITEMS
+  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_EDUCADORAS, NAV_ITEM_ADMIN] : NAV_ITEMS
 
   return (
     <div style={styles.container}>

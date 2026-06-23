@@ -14,6 +14,7 @@ const VACIO = {
 
 export default function AlumnosPage() {
   const [alumnos, setAlumnos] = useState([])
+  const [cursos, setCursos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editando, setEditando] = useState(null) // null = cerrado, {} = nuevo, {...} = editar
@@ -22,8 +23,11 @@ export default function AlumnosPage() {
 
   function cargarAlumnos() {
     setLoading(true)
-    api.get('/alumnos/')
-      .then((res) => setAlumnos(res.data))
+    Promise.all([api.get('/alumnos/'), api.get('/cursos/')])
+      .then(([alumnosRes, cursosRes]) => {
+        setAlumnos(alumnosRes.data)
+        setCursos(cursosRes.data)
+      })
       .catch(() => setError('Error al cargar alumnos'))
       .finally(() => setLoading(false))
   }
@@ -31,7 +35,7 @@ export default function AlumnosPage() {
   useEffect(() => { cargarAlumnos() }, [])
 
   function abrirNuevo() {
-    setForm(VACIO)
+    setForm({ ...VACIO })
     setEditando({})
   }
 
@@ -79,6 +83,11 @@ export default function AlumnosPage() {
     cargarAlumnos()
   }
 
+  function nombreCurso(idCurso) {
+    const curso = cursos.find((c) => c.id_curso === idCurso)
+    return curso ? curso.nombre : 'Sin curso asignado'
+  }
+
   return (
     <PanelLayout title="👧 Alumnos">
       <div style={styles.toolbar}>
@@ -96,6 +105,7 @@ export default function AlumnosPage() {
                 <th style={styles.th}>RUT</th>
                 <th style={styles.th}>Nombres</th>
                 <th style={styles.th}>Apellidos</th>
+                <th style={styles.th}>Curso</th>
                 <th style={styles.th}>Nacimiento</th>
                 <th style={styles.th}>Estado</th>
                 <th style={styles.th}>Acciones</th>
@@ -103,13 +113,14 @@ export default function AlumnosPage() {
             </thead>
             <tbody>
               {alumnos.length === 0 && (
-                <tr><td style={styles.td} colSpan={6}>Sin alumnos registrados todavía.</td></tr>
+                <tr><td style={styles.td} colSpan={7}>Sin alumnos registrados todavía.</td></tr>
               )}
               {alumnos.map((a) => (
                 <tr key={a.id_alumno}>
                   <td style={styles.td}>{a.rut}</td>
                   <td style={styles.td}>{a.nombres}</td>
                   <td style={styles.td}>{a.apellidos}</td>
+                  <td style={styles.td}>{nombreCurso(a.id_curso)}</td>
                   <td style={styles.td}>{a.fecha_nacimiento}</td>
                   <td style={styles.td}>
                     <span style={a.estado === 'activo' ? styles.badgeOk : styles.badgeOff}>{a.estado}</span>
@@ -137,8 +148,11 @@ export default function AlumnosPage() {
               <Campo label="Fecha nacimiento" type="date" value={form.fecha_nacimiento} onChange={(v) => setForm({ ...form, fecha_nacimiento: v })} required />
             </div>
             <div style={styles.formRow}>
-              <Campo label="ID Institución" type="number" value={form.id_institucion} onChange={(v) => setForm({ ...form, id_institucion: v })} required />
-              <Campo label="ID Curso (opcional)" type="number" value={form.id_curso} onChange={(v) => setForm({ ...form, id_curso: v })} />
+              <SelectCurso
+                value={form.id_curso}
+                cursos={cursos}
+                onChange={(v) => setForm({ ...form, id_curso: v })}
+              />
             </div>
             <Campo label="Alergias" value={form.alergias} onChange={(v) => setForm({ ...form, alergias: v })} />
             <Campo label="Medicamentos" value={form.medicamentos} onChange={(v) => setForm({ ...form, medicamentos: v })} />
@@ -167,6 +181,27 @@ function Campo({ label, value, onChange, type = 'text', required, placeholder })
         placeholder={placeholder}
         style={styles.input}
       />
+    </div>
+  )
+}
+
+function SelectCurso({ value, cursos, onChange }) {
+  return (
+    <div style={styles.field}>
+      <label htmlFor="alumno-curso" style={styles.label}>Curso</label>
+      <select
+        id="alumno-curso"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={styles.input}
+      >
+        <option value="">Sin curso asignado</option>
+        {cursos.map((curso) => (
+          <option key={curso.id_curso} value={curso.id_curso}>
+            {curso.nombre}{curso.nivel ? ` - ${curso.nivel}` : ''}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }

@@ -7,7 +7,9 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import LandingPage from './pages/LandingPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import AlumnosPage from './pages/AlumnosPage.jsx'
+import ApoderadosPage from './pages/ApoderadosPage.jsx'
 import CursosPage from './pages/CursosPage.jsx'
+import EducadorasPage from './pages/EducadorasPage.jsx'
 import AsistenciaPage from './pages/AsistenciaPage.jsx'
 import PagosPage from './pages/PagosPage.jsx'
 import UsuariosPage from './pages/UsuariosPage.jsx'
@@ -37,7 +39,9 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
           <Route path="/alumnos" element={<PrivateRoute><AlumnosPage /></PrivateRoute>} />
+          <Route path="/apoderados" element={<PrivateRoute><ApoderadosPage /></PrivateRoute>} />
           <Route path="/cursos" element={<PrivateRoute><CursosPage /></PrivateRoute>} />
+          <Route path="/educadoras" element={<AdminRoute><EducadorasPage /></AdminRoute>} />
           <Route path="/asistencia" element={<PrivateRoute><AsistenciaPage /></PrivateRoute>} />
           <Route path="/pagos" element={<PrivateRoute><PagosPage /></PrivateRoute>} />
           <Route path="/usuarios" element={<AdminRoute><UsuariosPage /></AdminRoute>} />
