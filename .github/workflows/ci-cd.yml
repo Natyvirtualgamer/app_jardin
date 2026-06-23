@@ -269,6 +269,10 @@ jobs:
 
             chmod 600 ~/app-jardin/.env
 
+            docker image prune -af || true
+            docker builder prune -af || true
+            docker container prune -f || true
+
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE_FRONTEND }}:latest
             docker pull ${{ env.IMAGE_BACKEND }}:latest
@@ -383,6 +387,10 @@ jobs:
             ENVFILE
 
             chmod 600 ~/app-jardin/.env
+
+            docker image prune -af || true
+            docker builder prune -af || true
+            docker container prune -f || true
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ${{ env.IMAGE_FRONTEND }}:latest
