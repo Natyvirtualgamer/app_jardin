@@ -5,6 +5,7 @@ import heroImage from '../assets/hero-classroom.png'
 import { colors, shadows } from '../theme.js'
 
 const WHATSAPP_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || '56912345678'
+const WHATSAPP_GROUP_URL = import.meta.env.VITE_WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/Db9jSyj7IuxI18s0WdAyH4'
 
 const MODULOS = [
   { icon: '👧', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
@@ -34,7 +35,15 @@ Jardín/Institución: ${contacto.jardin}
 Correo: ${contacto.correo}
 Teléfono: ${contacto.telefono}
 Mensaje: ${contacto.mensaje}`
-    window.location.href = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(texto)}`
+    const destino = WHATSAPP_GROUP_URL
+      ? WHATSAPP_GROUP_URL
+      : `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(texto)}`
+
+    if (WHATSAPP_GROUP_URL) {
+      window.location.href = destino
+      return
+    }
+    window.location.href = destino
   }
 
   return (
