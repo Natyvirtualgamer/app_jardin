@@ -32,6 +32,7 @@ export function AuthProvider({ children }) {
     api.defaults.headers.common['Authorization'] = `Bearer ${res.data.access_token}`
     localStorage.setItem('jardin_token', res.data.access_token)
     localStorage.setItem('jardin_user', JSON.stringify(nuevoUsuario))
+    return res.data.rol
   }
 
   function logout() {

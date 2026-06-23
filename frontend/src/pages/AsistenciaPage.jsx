@@ -65,8 +65,8 @@ export default function AsistenciaPage() {
     <PanelLayout title="📅 Asistencia">
       <div style={styles.toolbar}>
         <div style={styles.field}>
-          <label style={styles.label}>Fecha</label>
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={styles.input} />
+          <label htmlFor="asistencia-fecha" style={styles.label}>Fecha</label>
+          <input id="asistencia-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={styles.input} />
         </div>
         <button style={styles.newBtn} onClick={() => setAbierto(true)}>+ Registrar asistencia</button>
       </div>
@@ -105,8 +105,9 @@ export default function AsistenciaPage() {
         <Modal title="Registrar asistencia" onClose={() => setAbierto(false)}>
           <form onSubmit={guardar}>
             <div style={styles.field}>
-              <label style={styles.label}>Alumno</label>
+              <label htmlFor="asistencia-alumno" style={styles.label}>Alumno</label>
               <select
+                id="asistencia-alumno"
                 value={form.id_alumno}
                 onChange={(e) => setForm({ ...form, id_alumno: e.target.value })}
                 required
@@ -119,8 +120,9 @@ export default function AsistenciaPage() {
               </select>
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Estado</label>
+              <label htmlFor="asistencia-estado" style={styles.label}>Estado</label>
               <select
+                id="asistencia-estado"
                 value={form.estado}
                 onChange={(e) => setForm({ ...form, estado: e.target.value })}
                 style={styles.input}
@@ -129,8 +131,9 @@ export default function AsistenciaPage() {
               </select>
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Observación (opcional)</label>
+              <label htmlFor="asistencia-observacion" style={styles.label}>Observación (opcional)</label>
               <input
+                id="asistencia-observacion"
                 value={form.observacion}
                 onChange={(e) => setForm({ ...form, observacion: e.target.value })}
                 style={styles.input}

@@ -1,16 +1,16 @@
 // components/LoginModal.test.jsx — Reemplaza a pages/LoginPage.test.jsx
-// (esa pagina ya no existe; el login ahora es este modal).
+// (esa pagina ya no existe; el login ahora es este modal con pestañas).
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { BrowserRouter } from 'react-router-dom'
 import LoginModal from './LoginModal.jsx'
 import { AuthProvider } from '../context/AuthContext.jsx'
 
-function renderModal() {
+function renderModal(props = {}) {
   return render(
     <BrowserRouter>
       <AuthProvider>
-        <LoginModal onClose={() => {}} onSuccess={() => {}} />
+        <LoginModal onClose={() => {}} onSuccess={() => {}} {...props} />
       </AuthProvider>
     </BrowserRouter>
   )
@@ -32,14 +32,29 @@ describe('LoginModal', () => {
 
   it('llama a onClose al presionar el boton de cerrar', () => {
     const onClose = vi.fn()
-    render(
-      <BrowserRouter>
-        <AuthProvider>
-          <LoginModal onClose={onClose} onSuccess={() => {}} />
-        </AuthProvider>
-      </BrowserRouter>
-    )
-    screen.getByRole('button', { name: /cerrar/i }).click()
+    renderModal({ onClose })
+    fireEvent.click(screen.getByRole('button', { name: /cerrar/i }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('muestra el link de registro solo en la pestaña "Soy Apoderado"', () => {
+    renderModal()
+    expect(screen.queryByText(/regístrate/i)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /soy apoderado/i }))
+    expect(screen.getByText(/regístrate/i)).toBeInTheDocument()
+  })
+
+  it('cambia a la vista de recuperar contraseña', () => {
+    renderModal()
+    fireEvent.click(screen.getByRole('button', { name: /olvidaste tu contraseña/i }))
+    expect(screen.getByRole('button', { name: /enviar solicitud/i })).toBeInTheDocument()
+  })
+
+  it('el flujo de registro pide confirmar contraseña', () => {
+    renderModal()
+    fireEvent.click(screen.getByRole('button', { name: /soy apoderado/i }))
+    fireEvent.click(screen.getByRole('button', { name: /regístrate/i }))
+    expect(screen.getByRole('button', { name: /crear cuenta/i })).toBeInTheDocument()
+    expect(screen.getByLabelText(/confirmar contraseña/i)).toBeInTheDocument()
   })
 })

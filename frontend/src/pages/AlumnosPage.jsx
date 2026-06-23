@@ -154,10 +154,12 @@ export default function AlumnosPage() {
 }
 
 function Campo({ label, value, onChange, type = 'text', required, placeholder }) {
+  const id = `alumno-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   return (
     <div style={styles.field}>
-      <label style={styles.label}>{label}</label>
+      <label htmlFor={id} style={styles.label}>{label}</label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}

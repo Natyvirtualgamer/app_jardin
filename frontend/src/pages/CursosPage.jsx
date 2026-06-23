@@ -98,10 +98,11 @@ export default function CursosPage() {
 }
 
 function Campo({ label, value, onChange, type = 'text', required, placeholder }) {
+  const id = `curso-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   return (
     <div style={styles.field}>
-      <label style={styles.label}>{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} style={styles.input} />
+      <label htmlFor={id} style={styles.label}>{label}</label>
+      <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} style={styles.input} />
     </div>
   )
 }

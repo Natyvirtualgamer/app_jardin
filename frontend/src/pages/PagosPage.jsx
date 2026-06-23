@@ -121,8 +121,8 @@ export default function PagosPage() {
         <Modal title="Nueva mensualidad" onClose={() => setModalNueva(false)}>
           <form onSubmit={crearMensualidad}>
             <div style={styles.field}>
-              <label style={styles.label}>Alumno</label>
-              <select value={formMensualidad.id_alumno} onChange={(e) => setFormMensualidad({ ...formMensualidad, id_alumno: e.target.value })} required style={styles.input}>
+              <label htmlFor="pago-alumno" style={styles.label}>Alumno</label>
+              <select id="pago-alumno" value={formMensualidad.id_alumno} onChange={(e) => setFormMensualidad({ ...formMensualidad, id_alumno: e.target.value })} required style={styles.input}>
                 <option value="" disabled>Selecciona un alumno</option>
                 {alumnos.map((a) => <option key={a.id_alumno} value={a.id_alumno}>{a.nombres} {a.apellidos}</option>)}
               </select>
@@ -141,8 +141,8 @@ export default function PagosPage() {
           <form onSubmit={registrarPago}>
             <Campo label="Monto" type="number" value={formPago.monto} onChange={(v) => setFormPago({ ...formPago, monto: v })} required />
             <div style={styles.field}>
-              <label style={styles.label}>Método de pago</label>
-              <select value={formPago.metodo_pago} onChange={(e) => setFormPago({ ...formPago, metodo_pago: e.target.value })} style={styles.input}>
+              <label htmlFor="pago-metodo" style={styles.label}>Método de pago</label>
+              <select id="pago-metodo" value={formPago.metodo_pago} onChange={(e) => setFormPago({ ...formPago, metodo_pago: e.target.value })} style={styles.input}>
                 <option value="efectivo">Efectivo</option>
                 <option value="debito">Débito</option>
                 <option value="credito">Crédito</option>
@@ -159,10 +159,11 @@ export default function PagosPage() {
 }
 
 function Campo({ label, value, onChange, type = 'text', required, placeholder }) {
+  const id = `pago-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
   return (
     <div style={styles.field}>
-      <label style={styles.label}>{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} style={styles.input} />
+      <label htmlFor={id} style={styles.label}>{label}</label>
+      <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} placeholder={placeholder} style={styles.input} />
     </div>
   )
 }
