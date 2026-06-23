@@ -5,16 +5,15 @@ import heroImage from '../assets/hero-classroom.png'
 import { colors, shadows } from '../theme.js'
 import './LandingPage.css'
 
-const WHATSAPP_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || '56912345678'
-const WHATSAPP_GROUP_URL = import.meta.env.VITE_WHATSAPP_GROUP_URL || 'https://chat.whatsapp.com/Db9jSyj7IuxI18s0WdAyH4'
+const WHATSAPP_PHONE = import.meta.env.VITE_WHATSAPP_PHONE || '56987778172'
 
 const MODULOS = [
-  { icon: 'A', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
-  { icon: 'C', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.' },
-  { icon: 'AS', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.' },
-  { icon: 'AP', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.' },
-  { icon: 'U', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.' },
-  { icon: 'P', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.' },
+  { icon: 'student', titulo: 'Alumnos', texto: 'Matricula, ficha medica y cursos asignados.' },
+  { icon: 'courses', titulo: 'Cursos', texto: 'Niveles, capacidad, horario y educadora a cargo.' },
+  { icon: 'attendance', titulo: 'Asistencia', texto: 'Registro diario por alumno y fecha.' },
+  { icon: 'family', titulo: 'Apoderados', texto: 'Cuentas y acceso al portal familiar.' },
+  { icon: 'users', titulo: 'Usuarios', texto: 'Personal, educadoras, finanzas, recepcion y administradores.' },
+  { icon: 'payments', titulo: 'Pagos', texto: 'Mensualidades, descuentos y pagos parciales.' },
 ]
 
 const CONTACTO_INICIAL = { nombre: '', jardin: '', correo: '', telefono: '', mensaje: '' }
@@ -31,23 +30,14 @@ export default function LandingPage() {
 
   function enviarWhatsApp(e) {
     e.preventDefault()
-    const texto = `Hola, quiero solicitar informacion/demo de App Jardin.
+    const texto = `Hola, quiero agendar una visita y solicitar informacion de App Jardin.
 Nombre: ${contacto.nombre}
 Jardin/Institucion: ${contacto.jardin}
 Correo: ${contacto.correo}
 Telefono: ${contacto.telefono}
 Mensaje: ${contacto.mensaje || 'Quiero recibir mas informacion.'}`
 
-    if (WHATSAPP_GROUP_URL) {
-      const mensajeGrupo = `${texto}
-
-Grupo App Jardin: ${WHATSAPP_GROUP_URL}`
-      setContactoAviso('WhatsApp se abrira con el mensaje listo. Selecciona el grupo de App Jardin y presiona enviar.')
-      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeGrupo)}`, '_blank', 'noopener,noreferrer')
-      return
-    }
-
-    setContactoAviso('WhatsApp se abrira con el mensaje listo para enviar.')
+    setContactoAviso('WhatsApp se abrira con el mensaje listo para el chat de atencion.')
     window.open(`https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer')
   }
 
@@ -93,7 +83,9 @@ Grupo App Jardin: ${WHATSAPP_GROUP_URL}`
         <div className="landing-modulos" style={styles.modulos}>
           {MODULOS.map((modulo) => (
             <article key={modulo.titulo} className="landing-modulo-card" style={styles.moduloCard}>
-              <span style={styles.moduloIcon}>{modulo.icon}</span>
+              <span style={styles.moduloIcon}>
+                <ModuloIcon name={modulo.icon} />
+              </span>
               <div>
                 <h3 style={styles.moduloTitulo}>{modulo.titulo}</h3>
                 <p style={styles.moduloTexto}>{modulo.texto}</p>
@@ -116,7 +108,7 @@ Grupo App Jardin: ${WHATSAPP_GROUP_URL}`
         <div style={styles.contactCopy}>
           <p style={styles.kicker}>Contacto</p>
           <h2 style={styles.sectionTitleLeft}>Agenda una revision por WhatsApp</h2>
-          <p style={styles.textLine}>Completa el formulario y se abrira WhatsApp con el mensaje preparado. Selecciona el grupo de App Jardin y presiona enviar.</p>
+          <p style={styles.textLine}>Completa el formulario y se abrira WhatsApp con el mensaje preparado para el chat de atencion.</p>
         </div>
         <form className="landing-contact-form" onSubmit={enviarWhatsApp} style={styles.contactForm}>
           <Campo label="Nombre" value={contacto.nombre} onChange={(v) => setContacto({ ...contacto, nombre: v })} required />
@@ -141,7 +133,7 @@ Grupo App Jardin: ${WHATSAPP_GROUP_URL}`
       </section>
 
       <footer style={styles.footer}>
-        <span>© {new Date().getFullYear()} Preescolar Manager</span>
+        <span>&copy; {new Date().getFullYear()} Preescolar Manager</span>
         <button style={styles.footerLink} onClick={() => setShowLogin(true)}>Ingresar</button>
       </footer>
 
@@ -166,6 +158,74 @@ function Campo({ label, value, onChange, type = 'text', required }) {
       <input id={id} type={type} value={value} onChange={(e) => onChange(e.target.value)} required={required} style={styles.input} />
     </div>
   )
+}
+
+function ModuloIcon({ name }) {
+  const common = {
+    width: 30,
+    height: 30,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': 'true',
+  }
+
+  const icons = {
+    student: (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="3.2" />
+        <path d="M5 20c1-3.6 3.3-5.4 7-5.4s6 1.8 7 5.4" />
+        <path d="M8.5 6.4 12 4l3.5 2.4" />
+      </svg>
+    ),
+    courses: (
+      <svg {...common}>
+        <path d="M6 4h10a2 2 0 0 1 2 2v14H8a2 2 0 0 1-2-2z" />
+        <path d="M8 4v14a2 2 0 0 0 2 2" />
+        <path d="M10 8h5" />
+        <path d="M10 12h4" />
+      </svg>
+    ),
+    attendance: (
+      <svg {...common}>
+        <rect x="4" y="5" width="16" height="15" rx="2" />
+        <path d="M8 3v4" />
+        <path d="M16 3v4" />
+        <path d="M4 10h16" />
+        <path d="m8 15 2.2 2.2L16 12" />
+      </svg>
+    ),
+    family: (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3" />
+        <circle cx="16" cy="9" r="2.5" />
+        <path d="M3.8 20c.8-3.7 2.9-5.5 6.2-5.5 2.1 0 3.7.7 4.8 2.1" />
+        <path d="M13.5 15.2c3.4.1 5.5 1.7 6.4 4.8" />
+      </svg>
+    ),
+    users: (
+      <svg {...common}>
+        <circle cx="12" cy="7" r="3" />
+        <path d="M5 20c.8-4 3.1-6 7-6s6.2 2 7 6" />
+        <path d="m18 4 2 2" />
+        <path d="m20 4-2 2" />
+      </svg>
+    ),
+    payments: (
+      <svg {...common}>
+        <rect x="4" y="6" width="16" height="12" rx="2" />
+        <path d="M4 10h16" />
+        <path d="M8 15h3" />
+        <path d="M15.5 14.5c0 1-1 1.5-2.1 1.1-1.1-.4-1.2-1.7.1-2 1.3-.3 2-.8 1.8-1.7-.2-.9-1.4-1.2-2.3-.7" />
+        <path d="M14 10.8v5.4" />
+      </svg>
+    ),
+  }
+
+  return icons[name] || null
 }
 
 const styles = {
