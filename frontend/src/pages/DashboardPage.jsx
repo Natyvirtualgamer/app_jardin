@@ -4,22 +4,19 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 const BASE_CARDS = [
-  { icon: '👧', label: 'Alumnos', link: '/alumnos', text: 'Matricula y fichas', color: '#eaf2ff' },
-  { icon: '📚', label: 'Cursos', link: '/cursos', text: 'Niveles y cupos', color: '#fff7df' },
-  { icon: '📅', label: 'Asistencia', link: '/asistencia', text: 'Registro diario', color: '#e8f4ff' },
-  { icon: '💰', label: 'Pagos', link: '/pagos', text: 'Mensualidades', color: '#fff0df' },
-]
-
-const ADMIN_CARDS = [
-  { icon: '👥', label: 'Apoderados', link: '/apoderados', text: 'Familias y accesos', color: '#e9f8f1' },
-  { icon: '🍎', label: 'Educadoras', link: '/educadoras', text: 'Personal pedagogico', color: '#fce9f1' },
-  { icon: '🔑', label: 'Usuarios', link: '/usuarios', text: 'CRUD de personal', color: '#eef0ff' },
+  { icon: '👧', label: 'Alumnos', link: '/alumnos', text: 'Matricula y fichas', color: '#eaf2ff', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
+  { icon: '📚', label: 'Cursos', link: '/cursos', text: 'Niveles y cupos', color: '#fff7df', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
+  { icon: '📅', label: 'Asistencia', link: '/asistencia', text: 'Registro diario', color: '#e8f4ff', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
+  { icon: '💰', label: 'Pagos', link: '/pagos', text: 'Mensualidades', color: '#fff0df', roles: ['administrador', 'direccion', 'finanzas'] },
+  { icon: '👥', label: 'Apoderados', link: '/apoderados', text: 'Familias y accesos', color: '#e9f8f1', roles: ['administrador', 'direccion', 'recepcion'] },
+  { icon: '🍎', label: 'Educadoras', link: '/educadoras', text: 'Personal pedagogico', color: '#fce9f1', roles: ['administrador', 'direccion', 'recepcion'] },
+  { icon: '🔑', label: 'Usuarios', link: '/usuarios', text: 'CRUD de personal', color: '#eef0ff', roles: ['administrador'] },
 ]
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const cards = user?.rol === 'administrador' ? [...BASE_CARDS, ...ADMIN_CARDS] : BASE_CARDS
+  const cards = BASE_CARDS.filter((card) => card.roles.includes(user?.rol))
 
   return (
     <PanelLayout title="Panel de gestión">
@@ -29,7 +26,9 @@ export default function DashboardPage() {
           <h2 style={styles.heroTitle}>Gestiona la operación diaria desde un solo menú</h2>
           <p style={styles.heroText}>Accede a los módulos reales del proyecto: alumnos, apoderados, cursos, asistencia, pagos y usuarios del personal.</p>
         </div>
-        <button style={styles.primaryBtn} onClick={() => navigate('/usuarios')}>Crear usuario o personal</button>
+        {user?.rol === 'administrador' && (
+          <button style={styles.primaryBtn} onClick={() => navigate('/usuarios')}>Crear usuario o personal</button>
+        )}
       </section>
 
       <div style={styles.grid}>

@@ -4,10 +4,12 @@ from typing import List
 from pydantic import BaseModel
 from datetime import date, time
 from backend.core.database import get_db
-from backend.core.deps import get_current_user
+from backend.core.deps import require_roles
 from backend.models.asistencia import Asistencia
 
 router = APIRouter()
+
+ASISTENCIA_ROLES = ("administrador", "direccion", "educadora", "recepcion")
 
 class AsistenciaCreate(BaseModel):
     id_alumno: int
@@ -33,7 +35,7 @@ def listar_asistencia(
     fecha: date | None = None,
     id_alumno: int | None = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*ASISTENCIA_ROLES)),
 ):
     query = db.query(Asistencia)
     if fecha:
@@ -46,7 +48,7 @@ def listar_asistencia(
 def registrar_asistencia(
     datos: AsistenciaCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*ASISTENCIA_ROLES)),
 ):
     existente = db.query(Asistencia).filter(
         Asistencia.id_alumno == datos.id_alumno,
@@ -65,7 +67,7 @@ def actualizar_asistencia(
     id_asistencia: int,
     datos: AsistenciaCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*ASISTENCIA_ROLES)),
 ):
     registro = db.query(Asistencia).filter(Asistencia.id_asistencia == id_asistencia).first()
     if not registro:
@@ -80,7 +82,7 @@ def actualizar_asistencia(
 def eliminar_asistencia(
     id_asistencia: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*ASISTENCIA_ROLES)),
 ):
     registro = db.query(Asistencia).filter(Asistencia.id_asistencia == id_asistencia).first()
     if not registro:

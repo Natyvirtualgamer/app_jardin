@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../services/api.js'
 import PanelLayout from '../components/PanelLayout.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 export default function EducadorasPage() {
@@ -9,6 +10,7 @@ export default function EducadorasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   useEffect(() => {
     api.get('/auth/educadoras')
@@ -20,7 +22,7 @@ export default function EducadorasPage() {
   return (
     <PanelLayout title="Educadoras">
       <div style={styles.toolbar}>
-        <button style={styles.newBtn} onClick={() => navigate('/usuarios')}>Gestionar educadoras</button>
+        {user?.rol === 'administrador' && <button style={styles.newBtn} onClick={() => navigate('/usuarios')}>Gestionar educadoras</button>}
       </div>
       {loading && <p>Cargando educadoras...</p>}
       {error && <p style={{ color: colors.danger }}>{error}</p>}

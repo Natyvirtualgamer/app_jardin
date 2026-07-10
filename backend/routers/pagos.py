@@ -5,10 +5,14 @@ from pydantic import BaseModel
 from datetime import date, datetime
 from decimal import Decimal
 from backend.core.database import get_db
-from backend.core.deps import get_current_user
+from backend.core.deps import require_roles
 from backend.models.pago import Mensualidad, Pago
 
 router = APIRouter()
+
+PAGOS_READ_ROLES = ("administrador", "direccion", "finanzas")
+PAGOS_WRITE_ROLES = ("administrador", "finanzas")
+METODOS_PAGO_VALIDOS = {"efectivo", "debito", "credito", "transferencia"}
 
 # ── Mensualidades ───────────────────────────────────────────────────────
 
@@ -37,7 +41,7 @@ def listar_mensualidades(
     id_alumno: int | None = None,
     estado: str | None = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PAGOS_READ_ROLES)),
 ):
     query = db.query(Mensualidad)
     if id_alumno:
@@ -50,9 +54,24 @@ def listar_mensualidades(
 def crear_mensualidad(
     datos: MensualidadCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PAGOS_WRITE_ROLES)),
 ):
-    mensualidad = Mensualidad(**datos.dict())
+    if datos.monto_total <= 0:
+        raise HTTPException(status_code=400, detail="El monto total debe ser mayor a cero")
+    if datos.descuento < 0:
+        raise HTTPException(status_code=400, detail="El descuento no puede ser negativo")
+    if datos.descuento > datos.monto_total:
+        raise HTTPException(status_code=400, detail="El descuento no puede superar el monto total")
+
+    existe = db.query(Mensualidad).filter(
+        Mensualidad.id_alumno == datos.id_alumno,
+        Mensualidad.periodo == datos.periodo,
+    ).first()
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe una mensualidad para este alumno y periodo")
+
+    estado = "pagado" if datos.monto_total - datos.descuento <= 0 else "pendiente"
+    mensualidad = Mensualidad(**datos.dict(), estado=estado)
     db.add(mensualidad)
     db.commit()
     db.refresh(mensualidad)
@@ -81,7 +100,7 @@ class PagoOut(BaseModel):
 def listar_pagos(
     id_mensualidad: int | None = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PAGOS_READ_ROLES)),
 ):
     query = db.query(Pago)
     if id_mensualidad:
@@ -92,19 +111,31 @@ def listar_pagos(
 def registrar_pago(
     datos: PagoCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(*PAGOS_WRITE_ROLES)),
 ):
+    if datos.monto <= 0:
+        raise HTTPException(status_code=400, detail="El monto del pago debe ser mayor a cero")
+    if datos.metodo_pago not in METODOS_PAGO_VALIDOS:
+        raise HTTPException(status_code=400, detail="Método de pago inválido")
+
     mensualidad = db.query(Mensualidad).filter(Mensualidad.id_mensualidad == datos.id_mensualidad).first()
     if not mensualidad:
         raise HTTPException(status_code=404, detail="Mensualidad no encontrada")
+
+    total_pagado_actual = sum((p.monto for p in mensualidad.pagos), Decimal("0"))
+    saldo = mensualidad.monto_total - mensualidad.descuento
+    monto_pendiente = saldo - total_pagado_actual
+    if monto_pendiente <= 0:
+        raise HTTPException(status_code=400, detail="La mensualidad ya está pagada")
+    if datos.monto > monto_pendiente:
+        raise HTTPException(status_code=400, detail="El monto del pago supera el saldo pendiente")
 
     pago = Pago(**datos.dict(), id_usuario_registro=current_user.id_usuario)
     db.add(pago)
     db.flush()
 
     # Recalcula el estado de la mensualidad segun el total efectivamente pagado
-    total_pagado = sum((p.monto for p in mensualidad.pagos), Decimal(0)) + datos.monto
-    saldo = mensualidad.monto_total - mensualidad.descuento
+    total_pagado = total_pagado_actual + datos.monto
     if total_pagado >= saldo:
         mensualidad.estado = "pagado"
     elif total_pagado > 0:

@@ -40,22 +40,39 @@ from backend import models  # noqa: F401
 from backend.models.usuario import Rol, Usuario
 from backend.models.institucion import Institucion
 
-# ── Configuracion del admin inicial ────────────────────────────────────────
-ADMIN_EMAIL    = os.getenv("ADMIN_EMAIL",    "admin@appjardin.cl")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # OBLIGATORIA — sin default debil
-ADMIN_NOMBRE   = os.getenv("ADMIN_NOMBRE",   "Administrador")
-ADMIN_APELLIDO = os.getenv("ADMIN_APELLIDO", "Sistema")
-ADMIN_RUT      = os.getenv("ADMIN_RUT",      "11111111-1")
-INSTITUCION_NOMBRE = os.getenv("INSTITUCION_NOMBRE", "Jardin Infantil Default")
+# ── Configuracion ──────────────────────────────────────────────────────────
+# Valores por defecto que pueden ser sobreescritos por variables de entorno
+DEFAULT_CONFIG = {
+    "ADMIN_EMAIL": "admin@appjardin.cl",
+    "ADMIN_NOMBRE": "Administrador",
+    "ADMIN_APELLIDO": "Sistema",
+    "ADMIN_RUT": "11111111-1",
+    "INSTITUCION_NOMBRE": "Jardin Infantil Default",
+}
+
+# La contraseña es obligatoria y no tiene default.
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+# Cargar configuración, dando prioridad a las variables de entorno
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", DEFAULT_CONFIG["ADMIN_EMAIL"])
+ADMIN_NOMBRE = os.getenv("ADMIN_NOMBRE", DEFAULT_CONFIG["ADMIN_NOMBRE"])
+ADMIN_APELLIDO = os.getenv("ADMIN_APELLIDO", DEFAULT_CONFIG["ADMIN_APELLIDO"])
+ADMIN_RUT = os.getenv("ADMIN_RUT", DEFAULT_CONFIG["ADMIN_RUT"])
+INSTITUCION_NOMBRE = os.getenv(
+    "INSTITUCION_NOMBRE", DEFAULT_CONFIG["INSTITUCION_NOMBRE"]
+)
 
 # ── Roles del sistema ────────────────────────────────────────────────────
 ROLES = [
     {"nombre": "administrador", "descripcion": "Acceso completo al sistema"},
-    {"nombre": "direccion",     "descripcion": "Acceso a reportes y gestion general"},
-    {"nombre": "educadora",     "descripcion": "Registro de asistencia, comunicados y minutas"},
-    {"nombre": "finanzas",      "descripcion": "Gestion de pagos, mensualidades y gastos"},
-    {"nombre": "recepcion",     "descripcion": "Matricula y registro de alumnos"},
-    {"nombre": "apoderado",     "descripcion": "Acceso al portal de apoderados"},
+    {"nombre": "direccion", "descripcion": "Acceso a reportes y gestion general"},
+    {
+        "nombre": "educadora",
+        "descripcion": "Registro de asistencia, comunicados y minutas",
+    },
+    {"nombre": "finanzas", "descripcion": "Gestion de pagos, mensualidades y gastos"},
+    {"nombre": "recepcion", "descripcion": "Matricula y registro de alumnos"},
+    {"nombre": "apoderado", "descripcion": "Acceso al portal de apoderados"},
 ]
 
 # Passwords que NO se aceptan aunque cumplan largo minimo
@@ -118,16 +135,22 @@ def crear_institucion_default(db: Session) -> Institucion:
     sistema necesita al menos una institucion para ser usable.
     """
     print(f"\nVerificando institucion por defecto ({INSTITUCION_NOMBRE})...")
-    existente = db.query(Institucion).filter(Institucion.nombre == INSTITUCION_NOMBRE).first()
+    existente = (
+        db.query(Institucion).filter(Institucion.nombre == INSTITUCION_NOMBRE).first()
+    )
     if existente:
-        print(f"  Institucion '{INSTITUCION_NOMBRE}' ya existe (id={existente.id_institucion}) — omitiendo")
+        print(
+            f"  Institucion '{INSTITUCION_NOMBRE}' ya existe (id={existente.id_institucion}) — omitiendo"
+        )
         return existente
 
     institucion = Institucion(nombre=INSTITUCION_NOMBRE)
     db.add(institucion)
     db.flush()  # obtener id_institucion generado
     db.commit()
-    print(f"  Institucion '{INSTITUCION_NOMBRE}' creada (id={institucion.id_institucion})")
+    print(
+        f"  Institucion '{INSTITUCION_NOMBRE}' creada (id={institucion.id_institucion})"
+    )
     return institucion
 
 

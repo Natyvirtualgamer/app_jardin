@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from backend.core.database import engine, Base
 from backend import models  # noqa: F401 — registra TODAS las tablas en Base.metadata
-from backend.routers import auth, alumnos, apoderados, cursos, asistencia, pagos, gastos
+from backend.routers import auth, alumnos, apoderados, cursos, asistencia, pagos, gastos, portal
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,6 +39,7 @@ app.include_router(cursos.router, prefix="/api/v1/cursos", tags=["Cursos"])
 app.include_router(asistencia.router, prefix="/api/v1/asistencia", tags=["Asistencia"])
 app.include_router(pagos.router, prefix="/api/v1/pagos", tags=["Pagos"])
 app.include_router(gastos.router, prefix="/api/v1/gastos", tags=["Gastos"])
+app.include_router(portal.router, prefix="/api/v1/portal", tags=["Portal Apoderado"])
 
 @app.get("/health")
 def health_check():

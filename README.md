@@ -43,7 +43,7 @@ cd app-jardin
 
 # 2. Crear archivo de variables de entorno
 cp .env.example .env
-# Editar .env con tus valores
+# Editar .env con tus valores. Para local, VITE_API_URL puede quedar en /api/v1.
 
 # 3. Levantar con Docker Compose
 docker compose up --build
@@ -60,6 +60,10 @@ docker compose exec \
 # Backend API: http://localhost/api/v1
 # Docs API: http://localhost:8000/docs
 ```
+
+Si ejecutas el frontend con `npm run dev` fuera de Docker, Vite proxya `/api`
+al backend local `http://localhost:8000` por defecto. Para apuntar a otro backend,
+define `VITE_API_PROXY_TARGET` en tu entorno local.
 
 ## Estructura del proyecto
 

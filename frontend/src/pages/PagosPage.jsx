@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react'
 import api from '../services/api.js'
 import PanelLayout from '../components/PanelLayout.jsx'
 import Modal from '../components/Modal.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 const ETIQUETA_ESTADO = { pendiente: 'Pendiente', parcial: 'Pago parcial', pagado: 'Pagado' }
 
 export default function PagosPage() {
+  const { user } = useAuth()
   const [mensualidades, setMensualidades] = useState([])
   const [alumnos, setAlumnos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -18,6 +20,7 @@ export default function PagosPage() {
   const [formMensualidad, setFormMensualidad] = useState({ id_alumno: '', periodo: '', monto_total: '', descuento: 0, beca: false, fecha_vencimiento: '' })
   const [formPago, setFormPago] = useState({ monto: '', metodo_pago: 'efectivo', comprobante_ref: '' })
   const [guardando, setGuardando] = useState(false)
+  const puedeEscribir = ['administrador', 'finanzas'].includes(user?.rol)
 
   function cargar() {
     setLoading(true)
@@ -78,7 +81,7 @@ export default function PagosPage() {
   return (
     <PanelLayout title="💰 Pagos">
       <div style={styles.toolbar}>
-        <button style={styles.newBtn} onClick={() => setModalNueva(true)}>+ Nueva mensualidad</button>
+        {puedeEscribir && <button style={styles.newBtn} onClick={() => setModalNueva(true)}>+ Nueva mensualidad</button>}
       </div>
 
       {loading ? <p>Cargando mensualidades...</p> : (
@@ -106,7 +109,7 @@ export default function PagosPage() {
                     <span style={m.estado === 'pagado' ? styles.badgeOk : styles.badgePend}>{ETIQUETA_ESTADO[m.estado] ?? m.estado}</span>
                   </td>
                   <td style={styles.td}>
-                    {m.estado !== 'pagado' && (
+                    {puedeEscribir && m.estado !== 'pagado' && (
                       <button style={styles.actionBtn} onClick={() => setModalPago(m)}>Registrar pago</button>
                     )}
                   </td>

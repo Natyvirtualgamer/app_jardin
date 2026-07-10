@@ -53,7 +53,12 @@ DB_PASSWORD=MiPasswordSeguro123!
 # Generar SECRET_KEY con: openssl rand -hex 32
 SECRET_KEY=pega-aqui-el-resultado
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+VITE_API_URL=/api/v1
+VITE_API_PROXY_TARGET=http://localhost:8000
 ```
+
+`VITE_API_URL=/api/v1` usa el proxy local de Nginx/Vite. Si ejecutas el
+backend directo sin proxy, puedes cambiarlo a `http://localhost:8000/api/v1`.
 
 > **IMPORTANTE**: El archivo `.env` está en `.gitignore`. Nunca lo subas al repositorio.
 
@@ -503,4 +508,3 @@ az storage blob list \
 | Ansible en pipeline | Solo provisioning manual | **Job 4 verify** en CI/CD |
 | Imágenes Docker | Elegidas sin justificación | **Tabla comparativa** python:3.11-slim vs alpine |
 | Estrategia RDS estudiante | No documentada | **Fallback** publicly_accessible=false + sg-rds |
-

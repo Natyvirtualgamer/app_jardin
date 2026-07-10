@@ -13,9 +13,11 @@ def get_current_user(
 ) -> Usuario:
     payload = decode_token(credentials.credentials)
     user_id = payload.get("sub")
-    if not user_id:
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
         raise HTTPException(status_code=401, detail="Token inválido")
-    user = db.query(Usuario).filter(Usuario.id_usuario == int(user_id), Usuario.activo == True).first()
+    user = db.query(Usuario).filter(Usuario.id_usuario == user_id, Usuario.activo == True).first()
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
     return user

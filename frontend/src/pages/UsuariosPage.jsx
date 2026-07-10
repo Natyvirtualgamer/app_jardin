@@ -18,6 +18,7 @@ export default function UsuariosPage() {
   const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
+  const [filtroRol, setFiltroRol] = useState('todos')
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(VACIO)
   const [resetUsuario, setResetUsuario] = useState(null)
@@ -39,11 +40,14 @@ export default function UsuariosPage() {
 
   const filtrados = usuarios.filter((u) => {
     const texto = `${u.nombre} ${u.apellido} ${u.email} ${u.rut} ${u.rol}`.toLowerCase()
-    return texto.includes(busqueda.toLowerCase())
+    const coincideBusqueda = texto.includes(busqueda.toLowerCase())
+    const coincideRol = filtroRol === 'todos' || u.rol === filtroRol
+    return coincideBusqueda && coincideRol
   })
 
   function abrirNuevo() {
-    setForm({ ...VACIO, password: generarPassword(), rol: roles[0]?.nombre ?? 'apoderado' })
+    const rolInicial = roles.find((rol) => rol.nombre === 'apoderado')?.nombre ?? roles[0]?.nombre ?? 'apoderado'
+    setForm({ ...VACIO, password: generarPassword(), rol: rolInicial })
     setEditando({})
     setMensajeOk('')
   }
@@ -128,6 +132,10 @@ export default function UsuariosPage() {
           placeholder="Buscar por nombre, RUT, correo o rol..."
           style={styles.search}
         />
+        <select value={filtroRol} onChange={(e) => setFiltroRol(e.target.value)} style={styles.roleFilter} aria-label="Filtrar por rol">
+          <option value="todos">Todos los roles</option>
+          {roles.map((rol) => <option key={rol.nombre} value={rol.nombre}>{rol.nombre}</option>)}
+        </select>
         <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo usuario</button>
       </div>
 
@@ -274,6 +282,7 @@ function Campo({ label, value, onChange, type = 'text', required, placeholder })
 const styles = {
   toolbar: { display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap' },
   search: { width: '100%', maxWidth: '380px', padding: '0.65rem', border: `1.5px solid ${colors.border}`, borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' },
+  roleFilter: { width: '100%', maxWidth: '210px', padding: '0.65rem', border: `1.5px solid ${colors.border}`, borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box', background: '#fff' },
   newBtn: { background: colors.primary, color: '#fff', border: 'none', padding: '0.65rem 1.2rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' },
   tableWrap: { background: colors.cardBg, borderRadius: '12px', boxShadow: shadows.card, overflowX: 'auto' },
   table: { width: '100%', borderCollapse: 'collapse', minWidth: '780px' },

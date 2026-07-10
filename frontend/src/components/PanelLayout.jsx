@@ -7,27 +7,27 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Inicio', icon: '🏠' },
-  { path: '/alumnos', label: 'Alumnos', icon: '👧' },
-  { path: '/cursos', label: 'Cursos', icon: '📚' },
-  { path: '/asistencia', label: 'Asistencia', icon: '📅' },
-  { path: '/pagos', label: 'Pagos', icon: '💰' },
+  { path: '/dashboard', label: 'Inicio', icon: '🏠', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
+  { path: '/alumnos', label: 'Alumnos', icon: '👧', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
+  { path: '/cursos', label: 'Cursos', icon: '📚', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
+  { path: '/asistencia', label: 'Asistencia', icon: '📅', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
+  { path: '/pagos', label: 'Pagos', icon: '💰', roles: ['administrador', 'direccion', 'finanzas'] },
+  { path: '/apoderados', label: 'Apoderados', icon: '👥', roles: ['administrador', 'direccion', 'recepcion'] },
+  { path: '/educadoras', label: 'Educadoras', icon: '🍎', roles: ['administrador', 'direccion', 'recepcion'] },
+  { path: '/usuarios', label: 'Usuarios', icon: '🔑', roles: ['administrador'] },
 ]
-
-const NAV_ITEM_APODERADOS = { path: '/apoderados', label: 'Apoderados', icon: '👥' }
-const NAV_ITEM_EDUCADORAS = { path: '/educadoras', label: 'Educadoras', icon: '🍎' }
-const NAV_ITEM_ADMIN = { path: '/usuarios', label: 'Usuarios', icon: '🔑' }
 
 export default function PanelLayout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const navItems = user?.rol === 'administrador' ? [...NAV_ITEMS, NAV_ITEM_APODERADOS, NAV_ITEM_EDUCADORAS, NAV_ITEM_ADMIN] : NAV_ITEMS
+  const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user?.rol))
+  const homePath = user?.rol === 'apoderado' ? '/portal' : '/dashboard'
 
   return (
     <div style={styles.container}>
       <nav style={styles.nav}>
-        <span style={styles.brand} onClick={() => navigate('/dashboard')}>
+        <span style={styles.brand} onClick={() => navigate(homePath)}>
           <span style={styles.logoMark}>PM</span>
           <span>Preescolar <em>Manager</em></span>
         </span>

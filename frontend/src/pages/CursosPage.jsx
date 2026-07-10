@@ -4,17 +4,20 @@ import { useEffect, useState } from 'react'
 import api from '../services/api.js'
 import PanelLayout from '../components/PanelLayout.jsx'
 import Modal from '../components/Modal.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 const VACIO = { id_institucion: 1, id_educadora: '', nombre: '', nivel: '', capacidad_max: 20, horario: '' }
 
 export default function CursosPage() {
+  const { user } = useAuth()
   const [cursos, setCursos] = useState([])
   const [educadoras, setEducadoras] = useState([])
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(null)
   const [form, setForm] = useState(VACIO)
   const [guardando, setGuardando] = useState(false)
+  const puedeEscribir = ['administrador', 'direccion'].includes(user?.rol)
 
   function cargar() {
     setLoading(true)
@@ -75,7 +78,7 @@ export default function CursosPage() {
   return (
     <PanelLayout title="📚 Cursos">
       <div style={styles.toolbar}>
-        <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo curso</button>
+        {puedeEscribir && <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo curso</button>}
       </div>
 
       {loading ? <p>Cargando cursos...</p> : (
@@ -87,10 +90,12 @@ export default function CursosPage() {
               <p style={styles.cardMeta}>{c.nivel ?? 'Nivel sin definir'} · Capacidad {c.capacidad_max}</p>
               <p style={styles.cardMeta}>{nombreEducadora(c.id_educadora)}</p>
               <p style={styles.cardMeta}>{c.horario ?? 'Horario sin definir'}</p>
-              <div style={styles.cardActions}>
-                <button style={styles.actionBtn} onClick={() => abrirEditar(c)}>Editar</button>
-                <button style={styles.actionBtnDanger} onClick={() => eliminar(c)}>Desactivar</button>
-              </div>
+              {puedeEscribir && (
+                <div style={styles.cardActions}>
+                  <button style={styles.actionBtn} onClick={() => abrirEditar(c)}>Editar</button>
+                  <button style={styles.actionBtnDanger} onClick={() => eliminar(c)}>Desactivar</button>
+                </div>
+              )}
             </div>
           ))}
         </div>

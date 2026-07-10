@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import api from '../services/api.js'
 import PanelLayout from '../components/PanelLayout.jsx'
 import Modal from '../components/Modal.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 import { colors, shadows } from '../theme.js'
 
 const VACIO = {
@@ -13,6 +14,7 @@ const VACIO = {
 }
 
 export default function AlumnosPage() {
+  const { user } = useAuth()
   const [alumnos, setAlumnos] = useState([])
   const [cursos, setCursos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,6 +22,7 @@ export default function AlumnosPage() {
   const [editando, setEditando] = useState(null) // null = cerrado, {} = nuevo, {...} = editar
   const [form, setForm] = useState(VACIO)
   const [guardando, setGuardando] = useState(false)
+  const puedeEscribir = ['administrador', 'direccion', 'recepcion'].includes(user?.rol)
 
   function cargarAlumnos() {
     setLoading(true)
@@ -91,7 +94,7 @@ export default function AlumnosPage() {
   return (
     <PanelLayout title="👧 Alumnos">
       <div style={styles.toolbar}>
-        <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo alumno</button>
+        {puedeEscribir && <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo alumno</button>}
       </div>
 
       {loading && <p>Cargando alumnos...</p>}
@@ -108,12 +111,12 @@ export default function AlumnosPage() {
                 <th style={styles.th}>Curso</th>
                 <th style={styles.th}>Nacimiento</th>
                 <th style={styles.th}>Estado</th>
-                <th style={styles.th}>Acciones</th>
+                {puedeEscribir && <th style={styles.th}>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {alumnos.length === 0 && (
-                <tr><td style={styles.td} colSpan={7}>Sin alumnos registrados todavía.</td></tr>
+                <tr><td style={styles.td} colSpan={puedeEscribir ? 7 : 6}>Sin alumnos registrados todavía.</td></tr>
               )}
               {alumnos.map((a) => (
                 <tr key={a.id_alumno}>
@@ -125,10 +128,12 @@ export default function AlumnosPage() {
                   <td style={styles.td}>
                     <span style={a.estado === 'activo' ? styles.badgeOk : styles.badgeOff}>{a.estado}</span>
                   </td>
-                  <td style={styles.td}>
-                    <button style={styles.actionBtn} onClick={() => abrirEditar(a)}>Editar</button>
-                    <button style={styles.actionBtnDanger} onClick={() => eliminar(a)}>Dar de baja</button>
-                  </td>
+                  {puedeEscribir && (
+                    <td style={styles.td}>
+                      <button style={styles.actionBtn} onClick={() => abrirEditar(a)}>Editar</button>
+                      <button style={styles.actionBtnDanger} onClick={() => eliminar(a)}>Dar de baja</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

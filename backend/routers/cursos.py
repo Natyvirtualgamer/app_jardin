@@ -3,10 +3,13 @@ from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
 from backend.core.database import get_db
-from backend.core.deps import get_current_user
+from backend.core.deps import require_roles
 from backend.models.curso import Curso
 
 router = APIRouter()
+
+CURSOS_READ_ROLES = ("administrador", "direccion", "educadora", "finanzas", "recepcion")
+CURSOS_WRITE_ROLES = ("administrador", "direccion")
 
 class CursoCreate(BaseModel):
     id_institucion: int
@@ -29,11 +32,11 @@ class CursoOut(BaseModel):
         from_attributes = True
 
 @router.get("/", response_model=List[CursoOut])
-def listar_cursos(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def listar_cursos(db: Session = Depends(get_db), current_user=Depends(require_roles(*CURSOS_READ_ROLES))):
     return db.query(Curso).filter(Curso.activo == True).all()
 
 @router.post("/", response_model=CursoOut, status_code=201)
-def crear_curso(curso: CursoCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def crear_curso(curso: CursoCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(*CURSOS_WRITE_ROLES))):
     db_curso = Curso(**curso.dict())
     db.add(db_curso)
     db.commit()
@@ -41,14 +44,14 @@ def crear_curso(curso: CursoCreate, db: Session = Depends(get_db), current_user=
     return db_curso
 
 @router.get("/{id_curso}", response_model=CursoOut)
-def obtener_curso(id_curso: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def obtener_curso(id_curso: int, db: Session = Depends(get_db), current_user=Depends(require_roles(*CURSOS_READ_ROLES))):
     curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
     return curso
 
 @router.put("/{id_curso}", response_model=CursoOut)
-def actualizar_curso(id_curso: int, datos: CursoCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def actualizar_curso(id_curso: int, datos: CursoCreate, db: Session = Depends(get_db), current_user=Depends(require_roles(*CURSOS_WRITE_ROLES))):
     curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")
@@ -59,7 +62,7 @@ def actualizar_curso(id_curso: int, datos: CursoCreate, db: Session = Depends(ge
     return curso
 
 @router.delete("/{id_curso}", status_code=204)
-def eliminar_curso(id_curso: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def eliminar_curso(id_curso: int, db: Session = Depends(get_db), current_user=Depends(require_roles(*CURSOS_WRITE_ROLES))):
     curso = db.query(Curso).filter(Curso.id_curso == id_curso).first()
     if not curso:
         raise HTTPException(status_code=404, detail="Curso no encontrado")

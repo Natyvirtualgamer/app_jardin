@@ -2,11 +2,13 @@ import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from backend.core.apoderado_utils import get_or_create_apoderado_for_user, normalize_email, normalize_rut
 from backend.core.database import get_db
 from backend.core.deps import get_current_user, require_roles
-from backend.core.security import verify_password, create_access_token, get_password_hash
+from backend.core.security import verify_password, create_access_token, get_password_hash, validar_password
 from backend.models.usuario import Rol, Usuario
 from backend.models.institucion import Institucion
 from backend.models.educadora import Educadora
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 @router.post("/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(Usuario).filter(
-        Usuario.email == form_data.username,
+        func.lower(Usuario.email) == normalize_email(form_data.username),
         Usuario.activo == True
     ).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
@@ -37,8 +39,13 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 @router.get("/me")
-def get_me(db: Session = Depends(get_db)):
-    return {"message": "Endpoint /me — requiere token válido"}
+def get_me(current_user=Depends(get_current_user)):
+    return {
+        "id_usuario": current_user.id_usuario,
+        "nombre": f"{current_user.nombre} {current_user.apellido}",
+        "email": current_user.email,
+        "rol": current_user.rol.nombre,
+    }
 
 
 class RegistroApoderadoIn(BaseModel):
@@ -55,10 +62,13 @@ def registro_apoderado(datos: RegistroApoderadoIn, db: Session = Depends(get_db)
     jardin (administrador, educadora, etc.) se crea por el admin via
     backend/scripts/create_admin.py o un endpoint administrativo, nunca por
     autorregistro publico (evita que cualquiera se cree una cuenta de staff)."""
-    if len(datos.password) < 8:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
-    if db.query(Usuario).filter(Usuario.email == datos.email).first():
+    validar_password(datos.password)
+    email_normalizado = normalize_email(datos.email)
+    rut_normalizado = normalize_rut(datos.rut)
+    if _usuario_email_existente(db, email_normalizado):
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese correo")
+    if _usuario_rut_existente(db, rut_normalizado):
+        raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese RUT")
 
     rol_apoderado = db.query(Rol).filter(Rol.nombre == "apoderado").first()
     if not rol_apoderado:
@@ -72,12 +82,14 @@ def registro_apoderado(datos: RegistroApoderadoIn, db: Session = Depends(get_db)
         id_institucion=institucion.id_institucion,
         nombre=datos.nombre,
         apellido=datos.apellido,
-        rut=datos.rut,
-        email=datos.email,
+        rut=rut_normalizado,
+        email=email_normalizado,
         hashed_password=get_password_hash(datos.password),
         activo=True,
     )
     db.add(nuevo)
+    db.flush()
+    get_or_create_apoderado_for_user(db, nuevo)
     db.commit()
     return {"message": "Cuenta creada correctamente. Ya puedes iniciar sesión."}
 
@@ -168,6 +180,23 @@ def _institucion_default(db: Session) -> Institucion:
     return institucion
 
 
+def _usuario_email_existente(db: Session, email: str, id_usuario: int | None = None) -> Usuario | None:
+    query = db.query(Usuario).filter(func.lower(Usuario.email) == normalize_email(email))
+    if id_usuario:
+        query = query.filter(Usuario.id_usuario != id_usuario)
+    return query.first()
+
+
+def _usuario_rut_existente(db: Session, rut: str, id_usuario: int | None = None) -> Usuario | None:
+    rut_normalizado = normalize_rut(rut)
+    for usuario in db.query(Usuario).all():
+        if id_usuario and usuario.id_usuario == id_usuario:
+            continue
+        if normalize_rut(usuario.rut) == rut_normalizado:
+            return usuario
+    return None
+
+
 def _asegurar_ficha_educadora(db: Session, usuario: Usuario, rol_nombre: str) -> None:
     if rol_nombre != "educadora":
         return
@@ -176,17 +205,23 @@ def _asegurar_ficha_educadora(db: Session, usuario: Usuario, rol_nombre: str) ->
         db.add(Educadora(id_usuario=usuario.id_usuario))
 
 
+def _asegurar_ficha_apoderado(db: Session, usuario: Usuario, rol_nombre: str) -> None:
+    if rol_nombre == "apoderado":
+        get_or_create_apoderado_for_user(db, usuario)
+
+
 @router.post("/usuarios", response_model=UsuarioOut, status_code=201)
 def crear_usuario(
     datos: UsuarioCreate,
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("administrador")),
 ):
-    if len(datos.password) < 8:
-        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 8 caracteres")
-    if db.query(Usuario).filter(Usuario.email == datos.email).first():
+    validar_password(datos.password)
+    email_normalizado = normalize_email(datos.email)
+    rut_normalizado = normalize_rut(datos.rut)
+    if _usuario_email_existente(db, email_normalizado):
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese correo")
-    if db.query(Usuario).filter(Usuario.rut == datos.rut).first():
+    if _usuario_rut_existente(db, rut_normalizado):
         raise HTTPException(status_code=400, detail="Ya existe una cuenta con ese RUT")
 
     rol = _rol_por_nombre(db, datos.rol)
@@ -196,14 +231,15 @@ def crear_usuario(
         id_institucion=institucion.id_institucion,
         nombre=datos.nombre,
         apellido=datos.apellido,
-        rut=datos.rut,
-        email=datos.email,
+        rut=rut_normalizado,
+        email=email_normalizado,
         hashed_password=get_password_hash(datos.password),
         activo=True,
     )
     db.add(usuario)
     db.flush()
     _asegurar_ficha_educadora(db, usuario, rol.nombre)
+    _asegurar_ficha_apoderado(db, usuario, rol.nombre)
     db.commit()
     db.refresh(usuario)
     return UsuarioOut(
@@ -223,10 +259,12 @@ def actualizar_usuario(
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    email_duplicado = db.query(Usuario).filter(Usuario.email == datos.email, Usuario.id_usuario != id_usuario).first()
+    email_normalizado = normalize_email(datos.email)
+    rut_normalizado = normalize_rut(datos.rut)
+    email_duplicado = _usuario_email_existente(db, email_normalizado, id_usuario=id_usuario)
     if email_duplicado:
         raise HTTPException(status_code=400, detail="Ya existe otra cuenta con ese correo")
-    rut_duplicado = db.query(Usuario).filter(Usuario.rut == datos.rut, Usuario.id_usuario != id_usuario).first()
+    rut_duplicado = _usuario_rut_existente(db, rut_normalizado, id_usuario=id_usuario)
     if rut_duplicado:
         raise HTTPException(status_code=400, detail="Ya existe otra cuenta con ese RUT")
 
@@ -234,10 +272,11 @@ def actualizar_usuario(
     usuario.id_rol = rol.id_rol
     usuario.nombre = datos.nombre
     usuario.apellido = datos.apellido
-    usuario.rut = datos.rut
-    usuario.email = datos.email
+    usuario.rut = rut_normalizado
+    usuario.email = email_normalizado
     usuario.activo = datos.activo
     _asegurar_ficha_educadora(db, usuario, rol.nombre)
+    _asegurar_ficha_apoderado(db, usuario, rol.nombre)
     db.commit()
     db.refresh(usuario)
     return UsuarioOut(
@@ -268,7 +307,10 @@ class EducadoraOut(BaseModel):
 
 
 @router.get("/educadoras", response_model=List[EducadoraOut])
-def listar_educadoras(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+def listar_educadoras(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles("administrador", "direccion", "recepcion")),
+):
     filas = (
         db.query(Educadora, Usuario)
         .join(Usuario, Educadora.id_usuario == Usuario.id_usuario)
@@ -299,8 +341,7 @@ def resetear_password(
     db: Session = Depends(get_db),
     current_user=Depends(require_roles("administrador")),
 ):
-    if len(datos.nueva_password) < 8:
-        raise HTTPException(status_code=400, detail="La nueva contraseña debe tener al menos 8 caracteres")
+    validar_password(datos.nueva_password)
     usuario = db.query(Usuario).filter(Usuario.id_usuario == id_usuario).first()
     if not usuario:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
