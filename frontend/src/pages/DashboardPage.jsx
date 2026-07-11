@@ -8,6 +8,8 @@ const BASE_CARDS = [
   { icon: '📚', label: 'Cursos', link: '/cursos', text: 'Niveles y cupos', color: '#fff7df', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
   { icon: '📅', label: 'Asistencia', link: '/asistencia', text: 'Registro diario', color: '#e8f4ff', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
   { icon: '💰', label: 'Pagos', link: '/pagos', text: 'Mensualidades', color: '#fff0df', roles: ['administrador', 'direccion', 'finanzas'] },
+  { icon: '✉️', label: 'Comunicaciones', link: '/comunicaciones', text: 'Buzón familiar', color: '#eef7ff', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
+  { icon: '🍽️', label: 'Minuta', link: '/minutas', text: 'Menú semanal', color: '#fff7df', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
   { icon: '👥', label: 'Apoderados', link: '/apoderados', text: 'Familias y accesos', color: '#e9f8f1', roles: ['administrador', 'direccion', 'recepcion'] },
   { icon: '🍎', label: 'Educadoras', link: '/educadoras', text: 'Personal pedagogico', color: '#fce9f1', roles: ['administrador', 'direccion', 'recepcion'] },
   { icon: '🔑', label: 'Usuarios', link: '/usuarios', text: 'CRUD de personal', color: '#eef0ff', roles: ['administrador'] },

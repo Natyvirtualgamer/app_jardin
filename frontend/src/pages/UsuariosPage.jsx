@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from '../services/api.js'
 import PanelLayout from '../components/PanelLayout.jsx'
 import Modal from '../components/Modal.jsx'
+import { ActionGroup, EmptyState, PageHeader, PageToolbar, StatusBadge } from '../components/DataUI.jsx'
 import { colors, shadows } from '../theme.js'
 
 const VACIO = { nombre: '', apellido: '', rut: '', email: '', rol: 'apoderado', password: '', activo: true }
@@ -124,8 +125,15 @@ export default function UsuariosPage() {
   }
 
   return (
-    <PanelLayout title="Usuarios y personal">
-      <div style={styles.toolbar}>
+    <PanelLayout>
+      <PageHeader
+        eyebrow="Administración"
+        title="Usuarios y personal"
+        description="Gestiona cuentas, roles, estado de acceso y restablecimiento de contraseñas."
+        actions={<button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo usuario</button>}
+      />
+
+      <PageToolbar>
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -136,8 +144,7 @@ export default function UsuariosPage() {
           <option value="todos">Todos los roles</option>
           {roles.map((rol) => <option key={rol.nombre} value={rol.nombre}>{rol.nombre}</option>)}
         </select>
-        <button style={styles.newBtn} onClick={abrirNuevo}>+ Nuevo usuario</button>
-      </div>
+      </PageToolbar>
 
       {loading ? <p>Cargando usuarios...</p> : (
         <div style={styles.tableWrap}>
@@ -153,22 +160,20 @@ export default function UsuariosPage() {
               </tr>
             </thead>
             <tbody>
-              {filtrados.length === 0 && (
-                <tr><td style={styles.td} colSpan={6}>Sin resultados.</td></tr>
-              )}
+              {filtrados.length === 0 && <tr><td style={styles.td} colSpan={6}><EmptyState title="Sin resultados" description="Ajusta la búsqueda o el filtro de rol." /></td></tr>}
               {filtrados.map((u) => (
                 <tr key={u.id_usuario}>
                   <td style={styles.td}>{u.nombre} {u.apellido}</td>
                   <td style={styles.td}>{u.rut ?? 'Sin RUT'}</td>
                   <td style={styles.td}>{u.email}</td>
-                  <td style={styles.td}><span style={styles.badge}>{u.rol}</span></td>
-                  <td style={styles.td}>{u.activo ? 'Activo' : 'Inactivo'}</td>
+                  <td style={styles.td}><StatusBadge tone="info">{u.rol}</StatusBadge></td>
+                  <td style={styles.td}><StatusBadge tone={u.activo ? 'success' : 'neutral'}>{u.activo ? 'Activo' : 'Inactivo'}</StatusBadge></td>
                   <td style={styles.td}>
-                    <div style={styles.actions}>
+                    <ActionGroup>
                       <button style={styles.actionBtn} onClick={() => abrirEditar(u)}>Editar</button>
                       <button style={styles.actionBtn} onClick={() => abrirReset(u)}>Restablecer contraseña</button>
                       {u.activo && <button style={styles.actionBtnDanger} onClick={() => desactivar(u)}>Desactivar</button>}
-                    </div>
+                    </ActionGroup>
                   </td>
                 </tr>
               ))}

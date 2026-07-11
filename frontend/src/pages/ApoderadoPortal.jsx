@@ -10,6 +10,15 @@ const TABS = [
   { key: 'asistencia', label: 'Asistencia' },
   { key: 'pagos', label: 'Pagos' },
   { key: 'comunicaciones', label: 'Comunicaciones' },
+  { key: 'minuta', label: 'Minuta' },
+]
+
+const DIAS_MINUTA = [
+  { id: 1, label: 'Lunes' },
+  { id: 2, label: 'Martes' },
+  { id: 3, label: 'Miércoles' },
+  { id: 4, label: 'Jueves' },
+  { id: 5, label: 'Viernes' },
 ]
 
 const ESTADO_ASISTENCIA = {
@@ -20,6 +29,7 @@ const ESTADO_ASISTENCIA = {
 }
 
 const ESTADO_PAGO = { pendiente: 'Pendiente', parcial: 'Pago parcial', pagado: 'Pagado' }
+const ESTADO_COMUNICACION = { abierta: 'Abierta', respondida: 'Respondida', cerrada: 'Cerrada' }
 
 function mensajeError(err, fallback) {
   const detail = err.response?.data?.detail
@@ -40,6 +50,18 @@ export default function ApoderadoPortal() {
   const [activeTab, setActiveTab] = useState('resumen')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [nuevaComunicacion, setNuevaComunicacion] = useState(false)
+  const [formComunicacion, setFormComunicacion] = useState({ asunto: '', mensaje: '' })
+  const [respuestas, setRespuestas] = useState({})
+  const [guardandoComunicacion, setGuardandoComunicacion] = useState(false)
+
+  async function cargarComunicacionesAlumno(idAlumno) {
+    const comunicacionesRes = await api.get(`/portal/mis-alumnos/${idAlumno}/comunicaciones`)
+    setDetalles((prev) => ({
+      ...prev,
+      [idAlumno]: { ...(prev[idAlumno] || { asistencia: [], pagos: [], minuta: [] }), comunicaciones: comunicacionesRes.data },
+    }))
+  }
 
   useEffect(() => {
     async function cargar() {
@@ -52,11 +74,13 @@ export default function ApoderadoPortal() {
         if (listaAlumnos.length > 0) setSelectedAlumnoId(String(listaAlumnos[0].id_alumno))
 
         const pares = await Promise.all(listaAlumnos.map(async (alumno) => {
-          const [asistenciaRes, pagosRes] = await Promise.all([
+          const [asistenciaRes, pagosRes, comunicacionesRes, minutaRes] = await Promise.all([
             api.get(`/portal/mis-alumnos/${alumno.id_alumno}/asistencia`),
             api.get(`/portal/mis-alumnos/${alumno.id_alumno}/pagos`),
+            api.get(`/portal/mis-alumnos/${alumno.id_alumno}/comunicaciones`),
+            api.get(`/portal/mis-alumnos/${alumno.id_alumno}/minuta`),
           ])
-          return [alumno.id_alumno, { asistencia: asistenciaRes.data, pagos: pagosRes.data }]
+          return [alumno.id_alumno, { asistencia: asistenciaRes.data, pagos: pagosRes.data, comunicaciones: comunicacionesRes.data, minuta: minutaRes.data }]
         }))
         setDetalles(Object.fromEntries(pares))
       } catch (err) {
@@ -70,9 +94,42 @@ export default function ApoderadoPortal() {
   }, [])
 
   const alumnoSeleccionado = alumnos.find((alumno) => String(alumno.id_alumno) === selectedAlumnoId)
-  const info = alumnoSeleccionado ? detalles[alumnoSeleccionado.id_alumno] || { asistencia: [], pagos: [] } : { asistencia: [], pagos: [] }
+  const info = alumnoSeleccionado ? detalles[alumnoSeleccionado.id_alumno] || { asistencia: [], pagos: [], comunicaciones: [], minuta: [] } : { asistencia: [], pagos: [], comunicaciones: [], minuta: [] }
   const asistenciaReciente = info.asistencia.slice(0, 5)
   const pendientes = info.pagos.filter((m) => m.estado !== 'pagado').length
+
+  async function crearComunicacion(e) {
+    e.preventDefault()
+    if (!alumnoSeleccionado) return
+    setGuardandoComunicacion(true)
+    setError('')
+    try {
+      await api.post(`/portal/mis-alumnos/${alumnoSeleccionado.id_alumno}/comunicaciones`, formComunicacion)
+      setFormComunicacion({ asunto: '', mensaje: '' })
+      setNuevaComunicacion(false)
+      await cargarComunicacionesAlumno(alumnoSeleccionado.id_alumno)
+    } catch (err) {
+      setError(mensajeError(err, 'No se pudo crear la comunicación'))
+    } finally {
+      setGuardandoComunicacion(false)
+    }
+  }
+
+  async function responderComunicacion(e, comunicacion) {
+    e.preventDefault()
+    if (!alumnoSeleccionado) return
+    setGuardandoComunicacion(true)
+    setError('')
+    try {
+      await api.post(`/portal/comunicaciones/${comunicacion.id_comunicacion}/mensajes`, { mensaje: respuestas[comunicacion.id_comunicacion] || '' })
+      setRespuestas((prev) => ({ ...prev, [comunicacion.id_comunicacion]: '' }))
+      await cargarComunicacionesAlumno(alumnoSeleccionado.id_alumno)
+    } catch (err) {
+      setError(mensajeError(err, 'No se pudo enviar el mensaje'))
+    } finally {
+      setGuardandoComunicacion(false)
+    }
+  }
 
   return (
     <div style={styles.container}>
@@ -187,9 +244,75 @@ export default function ApoderadoPortal() {
             )}
 
             {activeTab === 'comunicaciones' && (
-              <div style={styles.emptyTab}>
-                <h3 style={styles.sectionTitle}>Comunicaciones</h3>
-                <p style={styles.text}>Aún no existen comunicaciones registradas para este estudiante.</p>
+              <div style={styles.section}>
+                <div style={styles.commHeader}>
+                  <div>
+                    <h3 style={styles.sectionTitle}>Comunicaciones</h3>
+                    <p style={styles.meta}>Conversaciones asociadas a este estudiante.</p>
+                  </div>
+                  <button style={styles.primaryBtn} onClick={() => setNuevaComunicacion((actual) => !actual)}>
+                    {nuevaComunicacion ? 'Cerrar formulario' : '+ Nueva comunicación'}
+                  </button>
+                </div>
+
+                {nuevaComunicacion && (
+                  <form onSubmit={crearComunicacion} style={styles.commForm}>
+                    <label style={styles.label} htmlFor="portal-com-asunto">Asunto</label>
+                    <input id="portal-com-asunto" value={formComunicacion.asunto} onChange={(e) => setFormComunicacion({ ...formComunicacion, asunto: e.target.value })} required style={styles.input} />
+                    <label style={styles.label} htmlFor="portal-com-mensaje">Mensaje</label>
+                    <textarea id="portal-com-mensaje" value={formComunicacion.mensaje} onChange={(e) => setFormComunicacion({ ...formComunicacion, mensaje: e.target.value })} required rows={4} style={styles.textarea} />
+                    <button type="submit" disabled={guardandoComunicacion} style={styles.primaryBtn}>{guardandoComunicacion ? 'Enviando...' : 'Enviar comunicación'}</button>
+                  </form>
+                )}
+
+                {info.comunicaciones.length === 0 && <p style={styles.meta}>Aún no existen comunicaciones registradas para este estudiante.</p>}
+                {info.comunicaciones.map((comunicacion) => (
+                  <article key={comunicacion.id_comunicacion} style={styles.thread}>
+                    <div style={styles.threadTitleRow}>
+                      <div>
+                        <h4 style={styles.threadTitle}>{comunicacion.asunto}</h4>
+                        <p style={styles.meta}>Actualizada el {new Date(comunicacion.fecha_actualizacion || comunicacion.fecha_creacion).toLocaleDateString('es-CL')}</p>
+                      </div>
+                      <span style={styles.commBadge(comunicacion.estado)}>{ESTADO_COMUNICACION[comunicacion.estado] || comunicacion.estado}</span>
+                    </div>
+                    <div style={styles.messages}>
+                      {comunicacion.mensajes.map((mensaje) => (
+                        <div key={mensaje.id_mensaje} style={mensaje.rol_autor === 'apoderado' ? styles.messageOwn : styles.messageStaff}>
+                          <strong>{mensaje.rol_autor === 'apoderado' ? 'Familia' : mensaje.autor}</strong>
+                          <p style={styles.messageText}>{mensaje.mensaje}</p>
+                          <span style={styles.meta}>{new Date(mensaje.fecha_envio).toLocaleString('es-CL')}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {comunicacion.estado !== 'cerrada' && (
+                      <form onSubmit={(e) => responderComunicacion(e, comunicacion)} style={styles.replyForm}>
+                        <textarea value={respuestas[comunicacion.id_comunicacion] || ''} onChange={(e) => setRespuestas({ ...respuestas, [comunicacion.id_comunicacion]: e.target.value })} required rows={3} placeholder="Escribe una respuesta..." style={styles.textarea} />
+                        <button type="submit" disabled={guardandoComunicacion} style={styles.actionBtn}>Responder</button>
+                      </form>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'minuta' && (
+              <div style={styles.section}>
+                <h3 style={styles.sectionTitle}>Minuta semanal</h3>
+                <p style={styles.meta}>Menú informado para el curso del estudiante.</p>
+                <div style={styles.menuGrid}>
+                  {DIAS_MINUTA.map((dia) => {
+                    const minuta = info.minuta.find((item) => item.dia_semana === dia.id)
+                    return (
+                      <article key={dia.id} style={styles.menuCard}>
+                        <h4 style={styles.threadTitle}>{dia.label}</h4>
+                        <MenuLine label="Desayuno" value={minuta?.desayuno} />
+                        <MenuLine label="Almuerzo" value={minuta?.almuerzo} />
+                        <MenuLine label="Colación" value={minuta?.colacion} />
+                        {minuta?.observaciones && <MenuLine label="Observaciones" value={minuta.observaciones} />}
+                      </article>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </section>
@@ -213,6 +336,15 @@ function InfoLine({ label, value }) {
     <div style={styles.infoLine}>
       <span style={styles.summaryTitle}>{label}</span>
       <strong style={styles.infoValue}>{value}</strong>
+    </div>
+  )
+}
+
+function MenuLine({ label, value }) {
+  return (
+    <div style={styles.menuLine}>
+      <span>{label}</span>
+      <strong>{value || 'Sin registro'}</strong>
     </div>
   )
 }
@@ -257,4 +389,26 @@ const styles = {
   rowLine: { display: 'flex', justifyContent: 'space-between', gap: '1rem', color: colors.textDark, fontSize: '0.88rem', padding: '0.55rem 0', borderBottom: `1px solid ${colors.border}` },
   paymentBox: { background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.7rem', marginBottom: '0.6rem' },
   emptyTab: { background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '1.2rem' },
+  primaryBtn: { background: colors.primary, color: '#fff', border: `1px solid ${colors.primary}`, padding: '0.55rem 0.9rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '700' },
+  actionBtn: { background: '#fff', color: colors.primary, border: `1px solid ${colors.primary}`, padding: '0.5rem 0.8rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '700' },
+  input: { width: '100%', padding: '0.65rem', border: `1.5px solid ${colors.border}`, borderRadius: '8px', background: '#fff', fontSize: '0.9rem', boxSizing: 'border-box', marginBottom: '0.8rem' },
+  textarea: { width: '100%', padding: '0.65rem', border: `1.5px solid ${colors.border}`, borderRadius: '8px', background: '#fff', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' },
+  commHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' },
+  commForm: { background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '1rem', marginBottom: '1rem' },
+  thread: { background: '#fff', border: `1px solid ${colors.border}`, borderRadius: '14px', padding: '1rem', marginBottom: '1rem' },
+  threadTitleRow: { display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap', borderBottom: `1px solid ${colors.border}`, paddingBottom: '0.8rem', marginBottom: '0.8rem' },
+  threadTitle: { color: colors.primaryDark, margin: '0 0 0.25rem', fontSize: '1rem' },
+  commBadge: (estado) => ({
+    background: estado === 'cerrada' ? '#eceff1' : estado === 'respondida' ? '#e8f7ef' : colors.primaryLight,
+    color: estado === 'cerrada' ? colors.textMuted : estado === 'respondida' ? colors.success : colors.primaryDark,
+    padding: '0.25rem 0.65rem', borderRadius: '999px', fontWeight: '800', fontSize: '0.78rem',
+  }),
+  messages: { display: 'flex', flexDirection: 'column', gap: '0.7rem' },
+  messageOwn: { alignSelf: 'flex-end', maxWidth: '82%', background: colors.primaryLight, color: colors.textDark, borderRadius: '12px 12px 2px 12px', padding: '0.7rem', border: `1px solid ${colors.border}` },
+  messageStaff: { alignSelf: 'flex-start', maxWidth: '82%', background: '#f8fbff', color: colors.textDark, borderRadius: '12px 12px 12px 2px', padding: '0.7rem', border: `1px solid ${colors.border}` },
+  messageText: { margin: '0.35rem 0', color: colors.textDark, lineHeight: 1.45, fontSize: '0.9rem' },
+  replyForm: { display: 'flex', gap: '0.6rem', alignItems: 'flex-end', marginTop: '0.9rem', flexWrap: 'wrap' },
+  menuGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.8rem', marginTop: '1rem' },
+  menuCard: { background: '#fff', border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '0.85rem' },
+  menuLine: { display: 'flex', flexDirection: 'column', gap: '0.2rem', background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '9px', padding: '0.55rem', marginBottom: '0.45rem', color: colors.textMuted, fontSize: '0.8rem' },
 }

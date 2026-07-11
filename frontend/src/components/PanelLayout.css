@@ -1,0 +1,258 @@
+.panel-shell {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #eef7ff 0%, #f8fcff 45%, #ffffff 100%);
+}
+
+.panel-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.85rem 1.5rem;
+  background: #ffffff;
+  color: #101d3f;
+  border-bottom: 1px solid #dfe7f3;
+  box-shadow: 0 8px 24px rgba(15, 35, 75, 0.08);
+}
+
+.panel-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: transparent;
+  border: 0;
+  color: #081638;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.panel-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #2f63df;
+  color: #fff;
+  font-size: 0.78rem;
+  box-shadow: 0 12px 28px rgba(15, 35, 75, 0.10);
+}
+
+.panel-links {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.panel-link,
+.panel-drawer-link {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.panel-link {
+  border-radius: 999px;
+  background: transparent;
+  color: #101d3f;
+  font-size: 0.86rem;
+  opacity: 0.82;
+  padding: 0.45rem 0.72rem;
+}
+
+.panel-link.active {
+  background: #eaf2ff;
+  color: #081638;
+  font-weight: 800;
+  opacity: 1;
+}
+
+.panel-right {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.panel-user {
+  color: #5c6b87;
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.panel-user.drawer {
+  display: block;
+  padding: 0.85rem 1rem;
+  white-space: normal;
+}
+
+.panel-logout,
+.panel-drawer-logout {
+  border: 1px solid #2f63df;
+  border-radius: 8px;
+  background: #2f63df;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.panel-logout {
+  padding: 0.42rem 0.9rem;
+  font-size: 0.85rem;
+}
+
+.panel-menu-btn {
+  display: none;
+  margin-left: auto;
+  border: 1px solid #dfe7f3;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: #081638;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.55rem 0.8rem;
+}
+
+.panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  border: 0;
+  background: rgba(8, 22, 56, 0.38);
+  cursor: pointer;
+}
+
+.panel-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 100;
+  width: min(86vw, 340px);
+  height: 100vh;
+  transform: translateX(105%);
+  transition: transform 180ms ease;
+  background: #fff;
+  border-left: 1px solid #dfe7f3;
+  box-shadow: -18px 0 40px rgba(15, 35, 75, 0.18);
+  overflow-y: auto;
+}
+
+.panel-drawer.open {
+  transform: translateX(0);
+}
+
+.panel-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #dfe7f3;
+}
+
+.panel-drawer-title {
+  color: #081638;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.panel-drawer-close {
+  border: 0;
+  background: transparent;
+  color: #5c6b87;
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.panel-drawer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0 1rem 1rem;
+}
+
+.panel-drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 11px;
+  background: #f8fbff;
+  color: #101d3f;
+  font-weight: 700;
+  padding: 0.75rem 0.85rem;
+  text-align: left;
+}
+
+.panel-drawer-link.active {
+  background: #eaf2ff;
+  color: #081638;
+  outline: 1px solid #2f63df;
+}
+
+.panel-drawer-logout {
+  margin-top: 0.4rem;
+  padding: 0.75rem 0.85rem;
+  text-align: center;
+}
+
+.panel-main {
+  box-sizing: border-box;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.panel-title {
+  color: #081638;
+  margin: 0 0 1.5rem;
+}
+
+.panel-brand:focus-visible,
+.panel-link:focus-visible,
+.panel-logout:focus-visible,
+.panel-menu-btn:focus-visible,
+.panel-drawer-link:focus-visible,
+.panel-drawer-close:focus-visible,
+.panel-drawer-logout:focus-visible {
+  outline: 3px solid rgba(47, 99, 223, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 980px) {
+  .panel-links,
+  .panel-right {
+    display: none;
+  }
+
+  .panel-menu-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .panel-nav {
+    padding: 0.75rem 1rem;
+  }
+
+  .panel-brand span:last-child {
+    display: none;
+  }
+
+  .panel-main {
+    padding: 1rem;
+  }
+
+  .panel-title {
+    font-size: 1.45rem;
+    margin-bottom: 1rem;
+  }
+}

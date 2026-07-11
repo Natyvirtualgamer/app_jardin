@@ -1,10 +1,7 @@
-// components/PanelLayout.jsx — Nav compartido por Dashboard/Alumnos/Cursos/
-// Asistencia/Pagos. Antes cada pagina dibujaba su propio <nav>; esto evita
-// duplicar el header en 5 archivos y deja una sola fuente de verdad para
-// los links del panel.
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
-import { colors, shadows } from '../theme.js'
+import './PanelLayout.css'
 
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Inicio', icon: '🏠', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
@@ -12,6 +9,8 @@ const NAV_ITEMS = [
   { path: '/cursos', label: 'Cursos', icon: '📚', roles: ['administrador', 'direccion', 'educadora', 'finanzas', 'recepcion'] },
   { path: '/asistencia', label: 'Asistencia', icon: '📅', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
   { path: '/pagos', label: 'Pagos', icon: '💰', roles: ['administrador', 'direccion', 'finanzas'] },
+  { path: '/comunicaciones', label: 'Comunicaciones', icon: '✉️', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
+  { path: '/minutas', label: 'Minuta', icon: '🍽️', roles: ['administrador', 'direccion', 'educadora', 'recepcion'] },
   { path: '/apoderados', label: 'Apoderados', icon: '👥', roles: ['administrador', 'direccion', 'recepcion'] },
   { path: '/educadoras', label: 'Educadoras', icon: '🍎', roles: ['administrador', 'direccion', 'recepcion'] },
   { path: '/usuarios', label: 'Usuarios', icon: '🔑', roles: ['administrador'] },
@@ -21,67 +20,69 @@ export default function PanelLayout({ children, title }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
   const navItems = NAV_ITEMS.filter((item) => item.roles.includes(user?.rol))
   const homePath = user?.rol === 'apoderado' ? '/portal' : '/dashboard'
 
+  useEffect(() => { setMenuOpen(false) }, [location.pathname])
+
+  function irA(path) {
+    navigate(path)
+    setMenuOpen(false)
+  }
+
+  function cerrarSesion() {
+    logout()
+    navigate('/')
+  }
+
   return (
-    <div style={styles.container}>
-      <nav style={styles.nav}>
-        <span style={styles.brand} onClick={() => navigate(homePath)}>
-          <span style={styles.logoMark}>PM</span>
+    <div className="panel-shell">
+      <nav className="panel-nav">
+        <button className="panel-brand" onClick={() => irA(homePath)} aria-label="Ir al inicio">
+          <span className="panel-logo">PM</span>
           <span>Preescolar <em>Manager</em></span>
-        </span>
-        <div style={styles.links}>
+        </button>
+
+        <div className="panel-links" aria-label="Navegación principal">
           {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                ...styles.link,
-                ...(location.pathname === item.path ? styles.linkActive : {}),
-              }}
-            >
-              {item.icon} {item.label}
+            <button key={item.path} onClick={() => irA(item.path)} className={location.pathname === item.path ? 'panel-link active' : 'panel-link'}>
+              <span aria-hidden="true">{item.icon}</span> {item.label}
             </button>
           ))}
         </div>
-        <div style={styles.right}>
-          <span style={styles.userInfo}>👤 {user?.nombre} <em>({user?.rol})</em></span>
-          <button onClick={() => { logout(); navigate('/') }} style={styles.logoutBtn}>
-            Cerrar sesión
-          </button>
+
+        <div className="panel-right">
+          <span className="panel-user">👤 {user?.nombre} <em>({user?.rol})</em></span>
+          <button onClick={cerrarSesion} className="panel-logout">Cerrar sesión</button>
         </div>
+
+        <button className="panel-menu-btn" onClick={() => setMenuOpen(true)} aria-label="Abrir menú" aria-expanded={menuOpen}>
+          ☰ Menú
+        </button>
       </nav>
-      <main style={styles.main}>
-        {title && <h1 style={styles.title}>{title}</h1>}
+
+      {menuOpen && <button className="panel-overlay" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú" />}
+      <aside className={menuOpen ? 'panel-drawer open' : 'panel-drawer'} aria-hidden={!menuOpen}>
+        <div className="panel-drawer-header">
+          <span className="panel-drawer-title">Menú</span>
+          <button className="panel-drawer-close" onClick={() => setMenuOpen(false)} aria-label="Cerrar menú">×</button>
+        </div>
+        <span className="panel-user drawer">👤 {user?.nombre} <em>({user?.rol})</em></span>
+        <div className="panel-drawer-links">
+          {navItems.map((item) => (
+            <button key={item.path} onClick={() => irA(item.path)} className={location.pathname === item.path ? 'panel-drawer-link active' : 'panel-drawer-link'}>
+              <span aria-hidden="true">{item.icon}</span> {item.label}
+            </button>
+          ))}
+          <button onClick={cerrarSesion} className="panel-drawer-logout">Cerrar sesión</button>
+        </div>
+      </aside>
+
+      <main className="panel-main">
+        {title && <h1 className="panel-title">{title}</h1>}
         {children}
       </main>
     </div>
   )
-}
-
-const styles = {
-  container: { minHeight: '100vh', background: 'linear-gradient(180deg, #eef7ff 0%, #f8fcff 45%, #ffffff 100%)' },
-  nav: {
-    background: '#ffffff', color: colors.textDark, padding: '0.9rem 1.5rem',
-    display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap',
-    boxShadow: '0 8px 24px rgba(15, 35, 75, 0.08)',
-    borderBottom: `1px solid ${colors.border}`,
-  },
-  brand: { display: 'inline-flex', alignItems: 'center', gap: '0.65rem', fontWeight: '800', cursor: 'pointer', fontSize: '1.05rem', color: colors.primaryDark },
-  logoMark: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', borderRadius: '12px', background: colors.primary, color: '#fff', fontSize: '0.78rem', boxShadow: shadows.card },
-  links: { display: 'flex', gap: '0.4rem', flex: 1, flexWrap: 'wrap' },
-  link: {
-    background: 'transparent', border: 'none', color: colors.textDark, opacity: 0.82,
-    padding: '0.45rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.88rem',
-  },
-  linkActive: { background: colors.primaryLight, color: colors.primaryDark, opacity: 1, fontWeight: '700' },
-  right: { display: 'flex', alignItems: 'center', gap: '1rem' },
-  userInfo: { fontSize: '0.85rem', opacity: 0.9, color: colors.textMuted },
-  logoutBtn: {
-    background: colors.primary, color: '#fff', border: `1px solid ${colors.primary}`,
-    padding: '0.4rem 0.9rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
-  },
-  main: { padding: '2rem', maxWidth: '1100px', margin: '0 auto' },
-  title: { color: colors.primaryDark, marginBottom: '1.5rem' },
 }

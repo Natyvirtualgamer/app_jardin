@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from datetime import date, time
 from backend.core.database import get_db
 from backend.core.deps import require_roles
+from backend.models.alumno import Alumno
 from backend.models.asistencia import Asistencia
 
 router = APIRouter()
@@ -30,18 +31,34 @@ class AsistenciaOut(BaseModel):
     class Config:
         from_attributes = True
 
+def _rango_mes(mes: str) -> tuple[date, date]:
+    try:
+        year, month = [int(part) for part in mes.split("-")]
+        inicio = date(year, month, 1)
+        fin = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+        return inicio, fin
+    except ValueError:
+        raise HTTPException(status_code=400, detail="El mes debe tener formato AAAA-MM")
+
 @router.get("/", response_model=List[AsistenciaOut])
 def listar_asistencia(
     fecha: date | None = None,
     id_alumno: int | None = None,
+    id_curso: int | None = None,
+    mes: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(require_roles(*ASISTENCIA_ROLES)),
 ):
     query = db.query(Asistencia)
+    if id_curso:
+        query = query.join(Alumno, Asistencia.id_alumno == Alumno.id_alumno).filter(Alumno.id_curso == id_curso)
     if fecha:
         query = query.filter(Asistencia.fecha == fecha)
     if id_alumno:
         query = query.filter(Asistencia.id_alumno == id_alumno)
+    if mes:
+        inicio, fin = _rango_mes(mes)
+        query = query.filter(Asistencia.fecha >= inicio, Asistencia.fecha < fin)
     return query.order_by(Asistencia.fecha.desc()).all()
 
 @router.post("/", response_model=AsistenciaOut, status_code=201)

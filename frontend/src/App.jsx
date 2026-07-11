@@ -12,6 +12,8 @@ import CursosPage from './pages/CursosPage.jsx'
 import EducadorasPage from './pages/EducadorasPage.jsx'
 import AsistenciaPage from './pages/AsistenciaPage.jsx'
 import PagosPage from './pages/PagosPage.jsx'
+import ComunicacionesPage from './pages/ComunicacionesPage.jsx'
+import MinutasPage from './pages/MinutasPage.jsx'
 import UsuariosPage from './pages/UsuariosPage.jsx'
 import ApoderadoPortal from './pages/ApoderadoPortal.jsx'
 
@@ -25,6 +27,8 @@ const ROUTE_ROLES = {
   educadoras: ['administrador', 'direccion', 'recepcion'],
   asistencia: ['administrador', 'direccion', 'educadora', 'recepcion'],
   pagos: ['administrador', 'direccion', 'finanzas'],
+  comunicaciones: ['administrador', 'direccion', 'educadora', 'recepcion'],
+  minutas: ['administrador', 'direccion', 'educadora', 'recepcion'],
   usuarios: ['administrador'],
   portal: ['apoderado'],
 }
@@ -55,6 +59,8 @@ export default function App() {
           <Route path="/educadoras" element={<RoleRoute roles={ROUTE_ROLES.educadoras}><EducadorasPage /></RoleRoute>} />
           <Route path="/asistencia" element={<RoleRoute roles={ROUTE_ROLES.asistencia}><AsistenciaPage /></RoleRoute>} />
           <Route path="/pagos" element={<RoleRoute roles={ROUTE_ROLES.pagos}><PagosPage /></RoleRoute>} />
+          <Route path="/comunicaciones" element={<RoleRoute roles={ROUTE_ROLES.comunicaciones}><ComunicacionesPage /></RoleRoute>} />
+          <Route path="/minutas" element={<RoleRoute roles={ROUTE_ROLES.minutas}><MinutasPage /></RoleRoute>} />
           <Route path="/usuarios" element={<RoleRoute roles={ROUTE_ROLES.usuarios}><UsuariosPage /></RoleRoute>} />
           <Route path="/portal" element={<RoleRoute roles={ROUTE_ROLES.portal}><ApoderadoPortal /></RoleRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

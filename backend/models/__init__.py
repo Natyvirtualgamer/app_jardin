@@ -12,6 +12,8 @@ from backend.models.curso import Curso  # noqa: F401
 from backend.models.asistencia import Asistencia  # noqa: F401
 from backend.models.gasto import CategoriaGasto, Proveedor, Gasto  # noqa: F401
 from backend.models.pago import Mensualidad, Pago  # noqa: F401
+from backend.models.comunicacion import Comunicacion, ComunicacionMensaje  # noqa: F401
+from backend.models.minuta import MinutaSemanal  # noqa: F401
 
 __all__ = [
     "Institucion", "Educadora", "Rol", "Usuario",
@@ -19,4 +21,6 @@ __all__ = [
     "Curso", "Asistencia",
     "CategoriaGasto", "Proveedor", "Gasto",
     "Mensualidad", "Pago",
+    "Comunicacion", "ComunicacionMensaje",
+    "MinutaSemanal",
 ]

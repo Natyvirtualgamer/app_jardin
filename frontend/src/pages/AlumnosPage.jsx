@@ -13,6 +13,33 @@ const VACIO = {
   id_institucion: 1, id_curso: '', alergias: '', medicamentos: '', observaciones: '',
 }
 
+const FORM_EDITAR_PAGO = { monto: '', metodo_pago: 'efectivo', fecha_pago: '', observacion: '' }
+const ETIQUETA_PAGO = { pendiente: 'Pendiente', parcial: 'Pago parcial', pagado: 'Pagado' }
+const ETIQUETA_METODO = { efectivo: 'Efectivo', debito: 'Débito', credito: 'Crédito', transferencia: 'Transferencia' }
+
+function dinero(valor) {
+  return `$${Number(valor || 0).toLocaleString('es-CL')}`
+}
+
+function fechaCorta(valor) {
+  if (!valor) return 'Sin fecha'
+  return new Date(valor).toLocaleDateString('es-CL')
+}
+
+function fechaParaInput(valor) {
+  if (!valor) return ''
+  const fecha = new Date(valor)
+  if (Number.isNaN(fecha.getTime())) return ''
+  const local = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function mensajeError(err, fallback) {
+  const detail = err.response?.data?.detail
+  if (Array.isArray(detail)) return detail.map((item) => item.msg).join(', ')
+  return detail || fallback
+}
+
 export default function AlumnosPage() {
   const { user } = useAuth()
   const [alumnos, setAlumnos] = useState([])
@@ -23,11 +50,14 @@ export default function AlumnosPage() {
   const [ficha, setFicha] = useState(null)
   const [fichaLoading, setFichaLoading] = useState(false)
   const [form, setForm] = useState(VACIO)
+  const [editandoPago, setEditandoPago] = useState(null)
+  const [formEditarPago, setFormEditarPago] = useState(FORM_EDITAR_PAGO)
   const [guardando, setGuardando] = useState(false)
   const puedeEscribir = ['administrador', 'direccion', 'recepcion'].includes(user?.rol)
   const puedeVerApoderados = ['administrador', 'direccion', 'recepcion'].includes(user?.rol)
   const puedeVerAsistencia = ['administrador', 'direccion', 'educadora', 'recepcion'].includes(user?.rol)
   const puedeVerPagos = ['administrador', 'direccion', 'finanzas'].includes(user?.rol)
+  const puedeGestionarPagos = ['administrador', 'finanzas'].includes(user?.rol)
 
   function cargarAlumnos() {
     setLoading(true)
@@ -100,6 +130,16 @@ export default function AlumnosPage() {
 
     try {
       const [apoderadosRes, asistenciaRes, pagosRes] = await Promise.all([apoderadosReq, asistenciaReq, pagosReq])
+      let mensualidades = pagosRes.data
+      if (puedeVerPagos && mensualidades.length > 0) {
+        const pagosMensualidades = await Promise.all(mensualidades.map((mensualidad) =>
+          api.get('/pagos/', { params: { id_mensualidad: mensualidad.id_mensualidad } }).catch(() => ({ data: [] }))
+        ))
+        mensualidades = mensualidades.map((mensualidad, index) => ({
+          ...mensualidad,
+          pagos: pagosMensualidades[index].data,
+        }))
+      }
       const apoderadosAlumno = apoderadosRes.data.filter((apoderado) =>
         (apoderado.alumnos || []).some((a) => a.id_alumno === alumno.id_alumno)
       )
@@ -107,10 +147,49 @@ export default function AlumnosPage() {
         alumno,
         apoderados: apoderadosAlumno,
         asistencia: asistenciaRes.data,
-        mensualidades: pagosRes.data,
+        mensualidades,
       })
     } finally {
       setFichaLoading(false)
+    }
+  }
+
+  function abrirEditarPago(pago) {
+    setEditandoPago(pago)
+    setFormEditarPago({
+      monto: String(pago.monto ?? ''),
+      metodo_pago: pago.metodo_pago,
+      fecha_pago: fechaParaInput(pago.fecha_pago),
+      observacion: pago.observacion ?? '',
+    })
+  }
+
+  async function guardarPagoFicha(e) {
+    e.preventDefault()
+    setGuardando(true)
+    try {
+      await api.put(`/pagos/${editandoPago.id_pago}`, {
+        monto: Number(formEditarPago.monto),
+        metodo_pago: formEditarPago.metodo_pago,
+        fecha_pago: new Date(formEditarPago.fecha_pago).toISOString(),
+        observacion: formEditarPago.observacion || null,
+      })
+      setEditandoPago(null)
+      if (ficha?.alumno) abrirFicha(ficha.alumno)
+    } catch (err) {
+      alert(mensajeError(err, 'No se pudo actualizar el pago'))
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function eliminarPagoFicha(pago) {
+    if (!confirm('¿Seguro que deseas eliminar este pago? Esta acción recalculará el estado de la mensualidad.')) return
+    try {
+      await api.delete(`/pagos/${pago.id_pago}`)
+      if (ficha?.alumno) abrirFicha(ficha.alumno)
+    } catch (err) {
+      alert(mensajeError(err, 'No se pudo eliminar el pago'))
     }
   }
 
@@ -206,16 +285,39 @@ export default function AlumnosPage() {
               puedeVerApoderados={puedeVerApoderados}
               puedeVerAsistencia={puedeVerAsistencia}
               puedeVerPagos={puedeVerPagos}
+              puedeGestionarPagos={puedeGestionarPagos}
               onEditar={() => { setFicha(null); abrirEditar(ficha.alumno) }}
+              onEditarPago={abrirEditarPago}
+              onEliminarPago={eliminarPagoFicha}
             />
           )}
+        </Modal>
+      )}
+
+      {editandoPago && (
+        <Modal title="Editar pago registrado" onClose={() => setEditandoPago(null)}>
+          <form onSubmit={guardarPagoFicha}>
+            <Campo label="Monto" type="number" value={formEditarPago.monto} onChange={(v) => setFormEditarPago({ ...formEditarPago, monto: v })} required />
+            <Campo label="Fecha de pago" type="datetime-local" value={formEditarPago.fecha_pago} onChange={(v) => setFormEditarPago({ ...formEditarPago, fecha_pago: v })} required />
+            <div style={styles.field}>
+              <label htmlFor="ficha-pago-metodo" style={styles.label}>Método de pago</label>
+              <select id="ficha-pago-metodo" value={formEditarPago.metodo_pago} onChange={(e) => setFormEditarPago({ ...formEditarPago, metodo_pago: e.target.value })} style={styles.input}>
+                <option value="efectivo">Efectivo</option>
+                <option value="debito">Débito</option>
+                <option value="credito">Crédito</option>
+                <option value="transferencia">Transferencia</option>
+              </select>
+            </div>
+            <Campo label="Observación (opcional)" value={formEditarPago.observacion} onChange={(v) => setFormEditarPago({ ...formEditarPago, observacion: v })} />
+            <button type="submit" disabled={guardando} style={styles.saveBtn}>{guardando ? 'Guardando...' : 'Guardar cambios'}</button>
+          </form>
         </Modal>
       )}
     </PanelLayout>
   )
 }
 
-function FichaAlumno({ ficha, curso, puedeEditar, puedeVerApoderados, puedeVerAsistencia, puedeVerPagos, onEditar }) {
+function FichaAlumno({ ficha, curso, puedeEditar, puedeVerApoderados, puedeVerAsistencia, puedeVerPagos, puedeGestionarPagos, onEditar, onEditarPago, onEliminarPago }) {
   const { alumno, apoderados, asistencia, mensualidades } = ficha
   return (
     <div>
@@ -263,9 +365,23 @@ function FichaAlumno({ ficha, curso, puedeEditar, puedeVerApoderados, puedeVerAs
         {!puedeVerPagos && <p style={styles.subText}>Información disponible para administración, dirección y finanzas.</p>}
         {puedeVerPagos && mensualidades.length === 0 && <p style={styles.subText}>Sin mensualidades registradas.</p>}
         {puedeVerPagos && mensualidades.map((mensualidad) => (
-          <div key={mensualidad.id_mensualidad} style={styles.listLineInline}>
-            <span>{mensualidad.periodo} · ${Number(mensualidad.monto_total).toLocaleString('es-CL')}</span>
-            <strong>{mensualidad.estado}</strong>
+          <div key={mensualidad.id_mensualidad} style={styles.paymentBox}>
+            <div style={styles.listLineInline}>
+              <span>{mensualidad.periodo} · {dinero(mensualidad.monto_total)}</span>
+              <strong>{ETIQUETA_PAGO[mensualidad.estado] ?? mensualidad.estado}</strong>
+            </div>
+            {(mensualidad.pagos || []).length === 0 && <p style={styles.subText}>Sin pagos registrados para este periodo.</p>}
+            {(mensualidad.pagos || []).map((pago) => (
+              <div key={pago.id_pago} style={styles.paymentLine}>
+                <span>{dinero(pago.monto)} · {fechaCorta(pago.fecha_pago)} · {ETIQUETA_METODO[pago.metodo_pago] ?? pago.metodo_pago}</span>
+                {puedeGestionarPagos && (
+                  <span style={styles.paymentActions}>
+                    <button style={styles.actionBtn} onClick={() => onEditarPago(pago)}>Editar</button>
+                    <button style={styles.actionBtnDanger} onClick={() => onEliminarPago(pago)}>Eliminar</button>
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         ))}
       </section>
@@ -349,4 +465,7 @@ const styles = {
   sectionTitle: { color: colors.primaryDark, margin: '0 0 0.6rem', fontSize: '1rem' },
   listLine: { display: 'flex', flexDirection: 'column', gap: '0.2rem', background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.7rem', marginBottom: '0.5rem', fontSize: '0.88rem' },
   listLineInline: { display: 'flex', justifyContent: 'space-between', gap: '1rem', background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.7rem', marginBottom: '0.5rem', fontSize: '0.88rem', flexWrap: 'wrap' },
+  paymentBox: { background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '12px', padding: '0.7rem', marginBottom: '0.6rem' },
+  paymentLine: { display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', padding: '0.45rem 0', borderTop: `1px solid ${colors.border}`, fontSize: '0.85rem', flexWrap: 'wrap' },
+  paymentActions: { display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' },
 }
