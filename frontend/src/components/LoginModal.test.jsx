@@ -37,10 +37,10 @@ describe('LoginModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('muestra el link de registro solo en la pestaña "Soy Apoderado"', () => {
+  it('muestra el link de registro solo en la pestaña de familias', () => {
     renderModal()
     expect(screen.queryByText(/regístrate/i)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /soy apoderado/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ingreso familias/i }))
     expect(screen.getByText(/regístrate/i)).toBeInTheDocument()
   })
 
@@ -52,7 +52,7 @@ describe('LoginModal', () => {
 
   it('el flujo de registro pide confirmar contraseña', () => {
     renderModal()
-    fireEvent.click(screen.getByRole('button', { name: /soy apoderado/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ingreso familias/i }))
     fireEvent.click(screen.getByRole('button', { name: /regístrate/i }))
     expect(screen.getByRole('button', { name: /crear cuenta/i })).toBeInTheDocument()
     expect(screen.getByLabelText(/confirmar contraseña/i)).toBeInTheDocument()

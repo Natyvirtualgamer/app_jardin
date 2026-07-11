@@ -1,11 +1,8 @@
 // components/LoginModal.jsx — v2: agrega pestañas Personal/Apoderado,
 // registro de apoderado y solicitud de recuperación de contraseña.
 //
-// IMPORTANTE de seguridad: la pestaña elegida (staff/apoderado) es solo
-// cosmetica — el menu real tras iniciar sesion se decide por el campo
-// `rol` que devuelve el backend (linea "onSuccess(rol)" mas abajo), nunca
-// por lo que el usuario clickeo en el modal. Asi evitamos que alguien
-// "elija" ser administrador desde el navegador.
+// La pestaña elegida define el flujo visual esperado. El backend sigue
+// autenticando y el frontend solo guarda sesion si el rol calza con ese flujo.
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import api from '../services/api.js'
@@ -16,7 +13,7 @@ const VISTAS = { LOGIN: 'login', RECUPERAR: 'recuperar', REGISTRO: 'registro' }
 
 export default function LoginModal({ onClose, onSuccess }) {
   const [vista, setVista] = useState(VISTAS.LOGIN)
-  const [tab, setTab] = useState('staff') // 'staff' | 'apoderado' — solo cambia copy/links
+  const [tab, setTab] = useState('staff') // 'staff' | 'familia'
 
   return (
     <Modal title={titulo(vista)} onClose={onClose}>
@@ -49,10 +46,11 @@ function LoginForm({ tab, setTab, onSuccess, irARecuperar, irARegistro }) {
     setLoading(true)
     setError('')
     try {
-      const rol = await login(email, password)
+      const rol = await login(email, password, tab === 'staff' ? 'staff' : 'familia')
       onSuccess(rol)
-    } catch {
-      setError('Correo o contraseña incorrectos. Intenta nuevamente.')
+    } catch (err) {
+      const mensajeFlujo = err.message?.startsWith('Tu cuenta corresponde')
+      setError(mensajeFlujo ? err.message : 'Correo o contraseña incorrectos. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }
@@ -62,10 +60,10 @@ function LoginForm({ tab, setTab, onSuccess, irARecuperar, irARegistro }) {
     <>
       <div style={styles.tabs}>
         <button type="button" onClick={() => setTab('staff')} style={tab === 'staff' ? styles.tabActive : styles.tab}>
-          👩‍🏫 Personal del Jardín
+          👩‍🏫 Ingreso personal
         </button>
-        <button type="button" onClick={() => setTab('apoderado')} style={tab === 'apoderado' ? styles.tabActive : styles.tab}>
-          👨‍👩‍👧 Soy Apoderado
+        <button type="button" onClick={() => setTab('familia')} style={tab === 'familia' ? styles.tabActive : styles.tab}>
+          👨‍👩‍👧 Ingreso familias
         </button>
       </div>
       <p style={styles.subtitle}>
@@ -83,7 +81,7 @@ function LoginForm({ tab, setTab, onSuccess, irARecuperar, irARegistro }) {
       </form>
       <div style={styles.links}>
         <button type="button" onClick={irARecuperar} style={styles.linkBtn}>¿Olvidaste tu contraseña?</button>
-        {tab === 'apoderado' && (
+        {tab === 'familia' && (
           <button type="button" onClick={irARegistro} style={styles.linkBtn}>¿No tienes cuenta? Regístrate</button>
         )}
       </div>

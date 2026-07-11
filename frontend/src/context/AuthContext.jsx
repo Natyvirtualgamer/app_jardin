@@ -21,18 +21,27 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-  async function login(email, password) {
+  async function login(email, password, expectedAudience) {
     const formData = new FormData()
     formData.append('username', email)
     formData.append('password', password)
     const res = await api.post('/auth/login', formData)
+    const rol = res.data.rol
+
+    if (expectedAudience === 'staff' && rol === 'apoderado') {
+      throw new Error('Tu cuenta corresponde a un apoderado. Ingresa desde el acceso de familias.')
+    }
+    if (expectedAudience === 'familia' && rol !== 'apoderado') {
+      throw new Error('Tu cuenta corresponde al personal del jardín. Ingresa desde el acceso de personal.')
+    }
+
     const nuevoUsuario = { nombre: res.data.nombre, rol: res.data.rol }
     setToken(res.data.access_token)
     setUser(nuevoUsuario)
     api.defaults.headers.common['Authorization'] = `Bearer ${res.data.access_token}`
     localStorage.setItem('jardin_token', res.data.access_token)
     localStorage.setItem('jardin_user', JSON.stringify(nuevoUsuario))
-    return res.data.rol
+    return rol
   }
 
   function logout() {

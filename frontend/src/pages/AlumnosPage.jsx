@@ -20,9 +20,14 @@ export default function AlumnosPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editando, setEditando] = useState(null) // null = cerrado, {} = nuevo, {...} = editar
+  const [ficha, setFicha] = useState(null)
+  const [fichaLoading, setFichaLoading] = useState(false)
   const [form, setForm] = useState(VACIO)
   const [guardando, setGuardando] = useState(false)
   const puedeEscribir = ['administrador', 'direccion', 'recepcion'].includes(user?.rol)
+  const puedeVerApoderados = ['administrador', 'direccion', 'recepcion'].includes(user?.rol)
+  const puedeVerAsistencia = ['administrador', 'direccion', 'educadora', 'recepcion'].includes(user?.rol)
+  const puedeVerPagos = ['administrador', 'direccion', 'finanzas'].includes(user?.rol)
 
   function cargarAlumnos() {
     setLoading(true)
@@ -86,6 +91,29 @@ export default function AlumnosPage() {
     cargarAlumnos()
   }
 
+  async function abrirFicha(alumno) {
+    setFicha({ alumno, apoderados: [], asistencia: [], mensualidades: [] })
+    setFichaLoading(true)
+    const apoderadosReq = puedeVerApoderados ? api.get('/apoderados/').catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+    const asistenciaReq = puedeVerAsistencia ? api.get('/asistencia/', { params: { id_alumno: alumno.id_alumno } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+    const pagosReq = puedeVerPagos ? api.get('/pagos/mensualidades', { params: { id_alumno: alumno.id_alumno } }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+
+    try {
+      const [apoderadosRes, asistenciaRes, pagosRes] = await Promise.all([apoderadosReq, asistenciaReq, pagosReq])
+      const apoderadosAlumno = apoderadosRes.data.filter((apoderado) =>
+        (apoderado.alumnos || []).some((a) => a.id_alumno === alumno.id_alumno)
+      )
+      setFicha({
+        alumno,
+        apoderados: apoderadosAlumno,
+        asistencia: asistenciaRes.data,
+        mensualidades: pagosRes.data,
+      })
+    } finally {
+      setFichaLoading(false)
+    }
+  }
+
   function nombreCurso(idCurso) {
     const curso = cursos.find((c) => c.id_curso === idCurso)
     return curso ? curso.nombre : 'Sin curso asignado'
@@ -111,12 +139,12 @@ export default function AlumnosPage() {
                 <th style={styles.th}>Curso</th>
                 <th style={styles.th}>Nacimiento</th>
                 <th style={styles.th}>Estado</th>
-                {puedeEscribir && <th style={styles.th}>Acciones</th>}
+                <th style={styles.th}>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {alumnos.length === 0 && (
-                <tr><td style={styles.td} colSpan={puedeEscribir ? 7 : 6}>Sin alumnos registrados todavía.</td></tr>
+                <tr><td style={styles.td} colSpan={7}>Sin alumnos registrados todavía.</td></tr>
               )}
               {alumnos.map((a) => (
                 <tr key={a.id_alumno}>
@@ -128,12 +156,11 @@ export default function AlumnosPage() {
                   <td style={styles.td}>
                     <span style={a.estado === 'activo' ? styles.badgeOk : styles.badgeOff}>{a.estado}</span>
                   </td>
-                  {puedeEscribir && (
-                    <td style={styles.td}>
-                      <button style={styles.actionBtn} onClick={() => abrirEditar(a)}>Editar</button>
-                      <button style={styles.actionBtnDanger} onClick={() => eliminar(a)}>Dar de baja</button>
-                    </td>
-                  )}
+                  <td style={styles.td}>
+                    <button style={styles.actionBtn} onClick={() => abrirFicha(a)}>Ver ficha</button>
+                    {puedeEscribir && <button style={styles.actionBtn} onClick={() => abrirEditar(a)}>Editar</button>}
+                    {puedeEscribir && <button style={styles.actionBtnDanger} onClick={() => eliminar(a)}>Dar de baja</button>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -168,7 +195,90 @@ export default function AlumnosPage() {
           </form>
         </Modal>
       )}
+
+      {ficha && (
+        <Modal title="Ficha del alumno" onClose={() => setFicha(null)} width="760px">
+          {fichaLoading ? <p>Cargando ficha...</p> : (
+            <FichaAlumno
+              ficha={ficha}
+              curso={nombreCurso(ficha.alumno.id_curso)}
+              puedeEditar={puedeEscribir}
+              puedeVerApoderados={puedeVerApoderados}
+              puedeVerAsistencia={puedeVerAsistencia}
+              puedeVerPagos={puedeVerPagos}
+              onEditar={() => { setFicha(null); abrirEditar(ficha.alumno) }}
+            />
+          )}
+        </Modal>
+      )}
     </PanelLayout>
+  )
+}
+
+function FichaAlumno({ ficha, curso, puedeEditar, puedeVerApoderados, puedeVerAsistencia, puedeVerPagos, onEditar }) {
+  const { alumno, apoderados, asistencia, mensualidades } = ficha
+  return (
+    <div>
+      <div style={styles.fichaHeader}>
+        <div>
+          <h2 style={styles.fichaTitle}>{alumno.nombres} {alumno.apellidos}</h2>
+          <p style={styles.subText}>RUT {alumno.rut} · Nacimiento {alumno.fecha_nacimiento}</p>
+          <p style={styles.subText}>Estado: {alumno.estado} · Curso: {curso}</p>
+        </div>
+        {puedeEditar && <button style={styles.actionBtn} onClick={onEditar}>Editar ficha</button>}
+      </div>
+
+      <div style={styles.detailGrid}>
+        <InfoBox label="Alergias" value={alumno.alergias || 'Sin registro'} />
+        <InfoBox label="Medicamentos" value={alumno.medicamentos || 'Sin registro'} />
+        <InfoBox label="Observaciones" value={alumno.observaciones || 'Sin observaciones'} />
+      </div>
+
+      <section style={styles.fichaSection}>
+        <h3 style={styles.sectionTitle}>Apoderados vinculados</h3>
+        {!puedeVerApoderados && <p style={styles.subText}>Información disponible para administración, dirección y recepción.</p>}
+        {puedeVerApoderados && apoderados.length === 0 && <p style={styles.subText}>Sin apoderados vinculados.</p>}
+        {puedeVerApoderados && apoderados.map((apoderado) => (
+          <div key={apoderado.id_apoderado} style={styles.listLine}>
+            <strong>{apoderado.nombres} {apoderado.apellidos}</strong>
+            <span>{apoderado.email} · {apoderado.telefono || 'Sin teléfono'}</span>
+          </div>
+        ))}
+      </section>
+
+      <section style={styles.fichaSection}>
+        <h3 style={styles.sectionTitle}>Asistencia reciente</h3>
+        {!puedeVerAsistencia && <p style={styles.subText}>Información no disponible para este rol.</p>}
+        {puedeVerAsistencia && asistencia.length === 0 && <p style={styles.subText}>Sin registros de asistencia.</p>}
+        {puedeVerAsistencia && asistencia.slice(0, 5).map((registro) => (
+          <div key={registro.id_asistencia} style={styles.listLineInline}>
+            <span>{registro.fecha}</span>
+            <strong>{registro.estado}</strong>
+          </div>
+        ))}
+      </section>
+
+      <section style={styles.fichaSection}>
+        <h3 style={styles.sectionTitle}>Mensualidades y pagos</h3>
+        {!puedeVerPagos && <p style={styles.subText}>Información disponible para administración, dirección y finanzas.</p>}
+        {puedeVerPagos && mensualidades.length === 0 && <p style={styles.subText}>Sin mensualidades registradas.</p>}
+        {puedeVerPagos && mensualidades.map((mensualidad) => (
+          <div key={mensualidad.id_mensualidad} style={styles.listLineInline}>
+            <span>{mensualidad.periodo} · ${Number(mensualidad.monto_total).toLocaleString('es-CL')}</span>
+            <strong>{mensualidad.estado}</strong>
+          </div>
+        ))}
+      </section>
+    </div>
+  )
+}
+
+function InfoBox({ label, value }) {
+  return (
+    <div style={styles.infoBox}>
+      <span style={styles.infoLabel}>{label}</span>
+      <strong style={styles.infoValue}>{value}</strong>
+    </div>
   )
 }
 
@@ -228,4 +338,15 @@ const styles = {
   label: { display: 'block', marginBottom: '0.3rem', fontSize: '0.85rem', color: colors.textDark, fontWeight: '500' },
   input: { width: '100%', padding: '0.6rem', border: `1.5px solid ${colors.border}`, borderRadius: '7px', fontSize: '0.9rem', boxSizing: 'border-box' },
   saveBtn: { width: '100%', padding: '0.75rem', background: colors.primary, color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', marginTop: '0.5rem' },
+  fichaHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' },
+  fichaTitle: { color: colors.primaryDark, margin: '0 0 0.35rem', fontSize: '1.3rem' },
+  subText: { color: colors.textMuted, fontSize: '0.86rem', margin: '0.25rem 0', lineHeight: 1.45 },
+  detailGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '0.8rem', marginBottom: '1rem' },
+  infoBox: { background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.8rem' },
+  infoLabel: { display: 'block', color: colors.textMuted, fontSize: '0.8rem', fontWeight: '700', marginBottom: '0.35rem' },
+  infoValue: { color: colors.textDark, fontSize: '0.9rem' },
+  fichaSection: { borderTop: `1px solid ${colors.border}`, paddingTop: '0.9rem', marginTop: '0.9rem' },
+  sectionTitle: { color: colors.primaryDark, margin: '0 0 0.6rem', fontSize: '1rem' },
+  listLine: { display: 'flex', flexDirection: 'column', gap: '0.2rem', background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.7rem', marginBottom: '0.5rem', fontSize: '0.88rem' },
+  listLineInline: { display: 'flex', justifyContent: 'space-between', gap: '1rem', background: '#f8fbff', border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '0.7rem', marginBottom: '0.5rem', fontSize: '0.88rem', flexWrap: 'wrap' },
 }
