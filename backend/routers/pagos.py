@@ -77,6 +77,55 @@ def crear_mensualidad(
     db.refresh(mensualidad)
     return mensualidad
 
+@router.put("/mensualidades/{id_mensualidad}", response_model=MensualidadOut)
+def actualizar_mensualidad(
+    id_mensualidad: int,
+    datos: MensualidadCreate,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(*PAGOS_WRITE_ROLES)),
+):
+    mensualidad = db.query(Mensualidad).filter(Mensualidad.id_mensualidad == id_mensualidad).first()
+    if not mensualidad:
+        raise HTTPException(status_code=404, detail="Mensualidad no encontrada")
+    if mensualidad.pagos:
+        raise HTTPException(status_code=400, detail="No se puede editar una mensualidad con pagos registrados")
+    if datos.monto_total <= 0:
+        raise HTTPException(status_code=400, detail="El monto total debe ser mayor a cero")
+    if datos.descuento < 0:
+        raise HTTPException(status_code=400, detail="El descuento no puede ser negativo")
+    if datos.descuento > datos.monto_total:
+        raise HTTPException(status_code=400, detail="El descuento no puede superar el monto total")
+
+    existe = db.query(Mensualidad).filter(
+        Mensualidad.id_mensualidad != id_mensualidad,
+        Mensualidad.id_alumno == datos.id_alumno,
+        Mensualidad.periodo == datos.periodo,
+    ).first()
+    if existe:
+        raise HTTPException(status_code=400, detail="Ya existe una mensualidad para este alumno y periodo")
+
+    for key, value in datos.dict().items():
+        setattr(mensualidad, key, value)
+    mensualidad.estado = "pagado" if datos.monto_total - datos.descuento <= 0 else "pendiente"
+    db.commit()
+    db.refresh(mensualidad)
+    return mensualidad
+
+@router.delete("/mensualidades/{id_mensualidad}")
+def eliminar_mensualidad(
+    id_mensualidad: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_roles(*PAGOS_WRITE_ROLES)),
+):
+    mensualidad = db.query(Mensualidad).filter(Mensualidad.id_mensualidad == id_mensualidad).first()
+    if not mensualidad:
+        raise HTTPException(status_code=404, detail="Mensualidad no encontrada")
+    if mensualidad.pagos:
+        raise HTTPException(status_code=400, detail="No se puede eliminar una mensualidad con pagos registrados")
+    db.delete(mensualidad)
+    db.commit()
+    return {"message": "Mensualidad eliminada correctamente."}
+
 # ── Pagos ────────────────────────────────────────────────────────────────
 
 class PagoCreate(BaseModel):

@@ -43,9 +43,11 @@ export default function PagosPage() {
   const [loading, setLoading] = useState(true)
   const [modalNueva, setModalNueva] = useState(false)
   const [modalPago, setModalPago] = useState(null)
+  const [modalEditarMensualidad, setModalEditarMensualidad] = useState(null)
   const [modalEditarPago, setModalEditarPago] = useState(null)
   const [formMensualidad, setFormMensualidad] = useState(FORM_MENSUALIDAD)
   const [formPago, setFormPago] = useState(FORM_PAGO)
+  const [formEditarMensualidad, setFormEditarMensualidad] = useState(FORM_MENSUALIDAD)
   const [formEditarPago, setFormEditarPago] = useState(FORM_EDITAR_PAGO)
   const [guardando, setGuardando] = useState(false)
   const [mensaje, setMensaje] = useState(null)
@@ -81,18 +83,22 @@ export default function PagosPage() {
     return Number(mensualidad.monto_total || 0) - Number(mensualidad.descuento || 0) - totalPagado
   }
 
+  function payloadMensualidad(form) {
+    return {
+      ...form,
+      id_alumno: Number(form.id_alumno),
+      monto_total: Number(form.monto_total),
+      descuento: Number(form.descuento || 0),
+      fecha_vencimiento: form.fecha_vencimiento || null,
+    }
+  }
+
   async function crearMensualidad(e) {
     e.preventDefault()
     setGuardando(true)
     setMensaje(null)
     try {
-      await api.post('/pagos/mensualidades', {
-        ...formMensualidad,
-        id_alumno: Number(formMensualidad.id_alumno),
-        monto_total: Number(formMensualidad.monto_total),
-        descuento: Number(formMensualidad.descuento || 0),
-        fecha_vencimiento: formMensualidad.fecha_vencimiento || null,
-      })
+      await api.post('/pagos/mensualidades', payloadMensualidad(formMensualidad))
       setModalNueva(false)
       setFormMensualidad(FORM_MENSUALIDAD)
       setMensaje({ tipo: 'ok', texto: 'Mensualidad creada correctamente.' })
@@ -101,6 +107,49 @@ export default function PagosPage() {
       setMensaje({ tipo: 'error', texto: mensajeError(err, 'No se pudo crear la mensualidad') })
     } finally {
       setGuardando(false)
+    }
+  }
+
+  function abrirEditarMensualidad(mensualidad) {
+    setModalEditarMensualidad(mensualidad)
+    setFormEditarMensualidad({
+      id_alumno: String(mensualidad.id_alumno),
+      periodo: mensualidad.periodo,
+      monto_total: String(mensualidad.monto_total ?? ''),
+      descuento: String(mensualidad.descuento ?? 0),
+      beca: Boolean(mensualidad.beca),
+      fecha_vencimiento: mensualidad.fecha_vencimiento || '',
+    })
+    setMensaje(null)
+  }
+
+  async function editarMensualidad(e) {
+    e.preventDefault()
+    setGuardando(true)
+    setMensaje(null)
+    try {
+      await api.put(`/pagos/mensualidades/${modalEditarMensualidad.id_mensualidad}`, payloadMensualidad(formEditarMensualidad))
+      setModalEditarMensualidad(null)
+      setFormEditarMensualidad(FORM_MENSUALIDAD)
+      setMensaje({ tipo: 'ok', texto: 'Mensualidad actualizada correctamente.' })
+      cargar()
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: mensajeError(err, 'No se pudo actualizar la mensualidad') })
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function eliminarMensualidad(mensualidad) {
+    const seguro = confirm('¿Seguro que deseas eliminar esta mensualidad? Solo se puede eliminar si aún no tiene pagos registrados.')
+    if (!seguro) return
+    setMensaje(null)
+    try {
+      await api.delete(`/pagos/mensualidades/${mensualidad.id_mensualidad}`)
+      setMensaje({ tipo: 'ok', texto: 'Mensualidad eliminada correctamente.' })
+      cargar()
+    } catch (err) {
+      setMensaje({ tipo: 'error', texto: mensajeError(err, 'No se pudo eliminar la mensualidad') })
     }
   }
 
@@ -204,6 +253,7 @@ export default function PagosPage() {
               )}
               {mensualidades.map((mensualidad) => {
                 const pagosMensualidad = pagosDeMensualidad(mensualidad.id_mensualidad)
+                const sinPagosRegistrados = pagosMensualidad.length === 0
                 return (
                   <tr key={mensualidad.id_mensualidad}>
                     <td style={styles.td}>{nombreAlumno(mensualidad.id_alumno)}</td>
@@ -234,9 +284,17 @@ export default function PagosPage() {
                       ))}
                     </td>
                     <td style={styles.td}>
-                      {puedeEscribir && mensualidad.estado !== 'pagado' && (
-                        <button style={styles.actionBtn} onClick={() => setModalPago(mensualidad)}>Registrar pago</button>
-                      )}
+                      <div style={styles.inlineActionsStart}>
+                        {puedeEscribir && mensualidad.estado !== 'pagado' && (
+                          <button style={styles.actionBtn} onClick={() => setModalPago(mensualidad)}>Registrar pago</button>
+                        )}
+                        {puedeEscribir && sinPagosRegistrados && (
+                          <button style={styles.actionBtn} onClick={() => abrirEditarMensualidad(mensualidad)}>Editar cobro</button>
+                        )}
+                        {puedeEscribir && sinPagosRegistrados && (
+                          <button style={styles.actionBtnDanger} onClick={() => eliminarMensualidad(mensualidad)}>Eliminar cobro</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -261,6 +319,25 @@ export default function PagosPage() {
             <Campo label="Descuento" type="number" value={formMensualidad.descuento} onChange={(v) => setFormMensualidad({ ...formMensualidad, descuento: v })} />
             <Campo label="Fecha vencimiento" type="date" value={formMensualidad.fecha_vencimiento} onChange={(v) => setFormMensualidad({ ...formMensualidad, fecha_vencimiento: v })} />
             <button type="submit" disabled={guardando} style={styles.saveBtn}>{guardando ? 'Guardando...' : 'Guardar'}</button>
+          </form>
+        </Modal>
+      )}
+
+      {modalEditarMensualidad && (
+        <Modal title={`Editar mensualidad - ${nombreAlumno(modalEditarMensualidad.id_alumno)} (${modalEditarMensualidad.periodo})`} onClose={() => setModalEditarMensualidad(null)}>
+          <form onSubmit={editarMensualidad}>
+            <div style={styles.field}>
+              <label htmlFor="editar-mensualidad-alumno" style={styles.label}>Alumno</label>
+              <select id="editar-mensualidad-alumno" value={formEditarMensualidad.id_alumno} onChange={(e) => setFormEditarMensualidad({ ...formEditarMensualidad, id_alumno: e.target.value })} required style={styles.input}>
+                <option value="" disabled>Selecciona un alumno</option>
+                {alumnos.map((a) => <option key={a.id_alumno} value={a.id_alumno}>{a.nombres} {a.apellidos}</option>)}
+              </select>
+            </div>
+            <Campo label="Periodo (AAAA-MM)" value={formEditarMensualidad.periodo} onChange={(v) => setFormEditarMensualidad({ ...formEditarMensualidad, periodo: v })} required placeholder="2026-06" />
+            <Campo label="Monto total" type="number" value={formEditarMensualidad.monto_total} onChange={(v) => setFormEditarMensualidad({ ...formEditarMensualidad, monto_total: v })} required />
+            <Campo label="Descuento" type="number" value={formEditarMensualidad.descuento} onChange={(v) => setFormEditarMensualidad({ ...formEditarMensualidad, descuento: v })} />
+            <Campo label="Fecha vencimiento" type="date" value={formEditarMensualidad.fecha_vencimiento} onChange={(v) => setFormEditarMensualidad({ ...formEditarMensualidad, fecha_vencimiento: v })} />
+            <button type="submit" disabled={guardando} style={styles.saveBtn}>{guardando ? 'Guardando...' : 'Guardar cambios'}</button>
           </form>
         </Modal>
       )}
@@ -336,6 +413,7 @@ const styles = {
   }),
   paymentLine: { display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', padding: '0.45rem 0', borderBottom: `1px solid ${colors.border}` },
   inlineActions: { display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' },
+  inlineActionsStart: { display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' },
   actionBtn: { background: 'none', border: `1px solid ${colors.primary}`, color: colors.primary, padding: '0.32rem 0.7rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' },
   actionBtnDanger: { background: 'none', border: `1px solid ${colors.danger}`, color: colors.danger, padding: '0.32rem 0.7rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: '600' },
   field: { marginBottom: '0.9rem' },
